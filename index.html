@@ -17,7 +17,8 @@
             </div>
             <ul>
                 <li class="active" data-view="overview"><a href="#"><i class="fas fa-tachometer-alt"></i> <span>نظرة عامة</span></a></li>
-                <li data-view="analytics"><a href="#"><i class="fas fa-chart-pie"></i> <span>التحليلات الرسومية</span></a></li> <li data-view="calendar"><a href="#"><i class="fas fa-calendar-alt"></i> <span>التقويم</span></a></li>
+                <li data-view="analytics"><a href="#"><i class="fas fa-chart-pie"></i> <span>التحليلات الرسومية</span></a></li>
+                <li data-view="calendar"><a href="#"><i class="fas fa-calendar-alt"></i> <span>التقويم</span></a></li>
                 <li data-view="timeline"><a href="#"><i class="fas fa-stream"></i> <span>الخط الزمني</span></a></li>
             </ul>
             <div class="sidebar-filter-section">
@@ -30,12 +31,11 @@
                     <label for="end-date">إلى تاريخ:</label>
                     <input type="date" id="end-date">
                 </div>
-                 <button id="reset-date-filter">إعادة تعيين</button>
+                <button id="reset-date-filter">إعادة تعيين</button>
             </div>
         </nav>
 
         <main class="main-content">
-
             <header class="top-bar">
                 <div class="page-title">لوحة متابعة التقارير</div>
                 <input type="search" id="search-input" placeholder="ابحث عن تقرير..." class="search-bar">
@@ -46,14 +46,14 @@
             </header>
 
             <div class="content-wrapper">
-
                 <section id="overview-section" class="view active-view">
                     <h2>نظرة عامة</h2>
                     <div class="kpi-cards-grid">
-                        <div class="kpi-card"><i class="fas fa-file-alt kpi-icon"></i><h4>إجمالي التقارير</h4><p id="kpi-total">-</p></div>
+                        <div class="kpi-card"><i class="fas fa-file-alt kpi-icon"></i><h4>إجمالي التقارير (المفلترة)</h4><p id="kpi-total">-</p></div>
                         <div class="kpi-card"><i class="fas fa-calendar-day kpi-icon"></i><h4>مستحق اليوم</h4><p id="kpi-due-today">-</p></div>
                         <div class="kpi-card"><i class="fas fa-hourglass-half kpi-icon"></i><h4>مستحق خلال 3 أيام</h4><p id="kpi-due-3days">-</p></div>
                         <div class="kpi-card"><i class="fas fa-history kpi-icon"></i><h4>تقارير منتهية</h4><p id="kpi-past-due">-</p></div>
+                        <div class="kpi-card"><i class="fas fa-calendar-check kpi-icon"></i><h4>تقارير خلال الفترة المحددة</h4><p id="kpi-due-in-period">-</p></div>
                     </div>
 
                     <div class="controls-container">
@@ -86,7 +86,7 @@
                     </div>
                 </section>
                 
-                <section id="analytics-section" class="view">
+                 <section id="analytics-section" class="view">
                      <h2>التحليلات الرسومية</h2>
                      <div class="charts-grid">
                         <div class="chart-container"><h4>التقارير حسب الجهة</h4><canvas id="departmentChart"></canvas></div>
@@ -105,8 +105,11 @@
                     <p>(سيتم عرض الخط الزمني التفاعلي هنا)</p>
                     <div id="timeline-placeholder"></div>
                 </section>
+            </div>
+        </main>
+    </div>
 
-            </div></main> </div> <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="script.js"></script>
 </body>
 </html>
