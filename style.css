@@ -1,162 +1,320 @@
-/* --- Global Styles & Variables --- */
-@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap');
+document.addEventListener('DOMContentLoaded', () => {
 
-:root {
-    --bg-color-light: #F8F9FA;
-    --sidebar-bg-light: #FFFFFF;
-    --topbar-bg-light: #FFFFFF;
-    --card-bg-light: #FFFFFF; 
-    --text-color-light: #212529;
-    --text-muted-light: #6C757D;
-    --border-color-light: #E9ECEF;
-    --primary-dark-light: #2C3E50;
+    // --- DOM Elements ---
+    const tableBody = document.getElementById('reports-table-body');
+    const searchInput = document.getElementById('search-input');
+    const themeSwitcherBtn = document.getElementById('theme-switcher-btn');
+    const themeIcon = themeSwitcherBtn.querySelector('i');
+    const notificationDot = document.getElementById('notification-dot');
+    const navLinks = document.querySelectorAll('.sidebar ul li');
+    const views = document.querySelectorAll('.view');
+    const kpiTotal = document.getElementById('kpi-total');
+    const kpiDueToday = document.getElementById('kpi-due-today');
+    const kpiDue3Days = document.getElementById('kpi-due-3days');
+    const kpiPastDue = document.getElementById('kpi-past-due');
+    const kpiDueInPeriod = document.getElementById('kpi-due-in-period'); // New KPI
+    const departmentChartCanvas = document.getElementById('departmentChart');
+    const frequencyChartCanvas = document.getElementById('frequencyChart');
+    const departmentFilter = document.getElementById('department-filter');
+    const paginationControls = document.getElementById('pagination-controls');
+    const startDateInput = document.getElementById('start-date');
+    const endDateInput = document.getElementById('end-date');
+    const resetDateBtn = document.getElementById('reset-date-filter');
+
+    // --- Settings & State ---
+    const dataUrl = 'data.json';
+    const targetEmail = 'shamdan@aur.com.sa';
+    const currentDate = new Date('2025-05-26T00:00:00'); 
+    let allReportsData = []; 
+    let filteredReportsData = []; 
+    let currentPage = 1;
+    const rowsPerPage = 15; // Changed to 15
+    let departmentChart = null;
+    let frequencyChart = null;
+    let chartsCreated = false;
+
+    // --- Date Calculations ---
+    const today = new Date(new Date(currentDate).setHours(0, 0, 0, 0)); // Ensure 'today' is start of day
+    const threeDaysLater = new Date(today);
+    threeDaysLater.setDate(today.getDate() + 3);
+
+    // --- Functions ---
+
+    function getStatus(dueDateStr) {
+        const due = new Date(new Date(dueDateStr).setHours(0, 0, 0, 0));
+        if (due < today) {
+            return { text: "منتهي", class: "status-past", isPast: true, isNear: false };
+        } else if (due.getTime() === today.getTime()) {
+            return { text: "مستحق اليوم", class: "status-due", isPast: false, isNear: true };
+        } else if (due > today && due <= threeDaysLater) {
+            return { text: "قادم قريباً", class: "status-upcoming", isPast: false, isNear: true };
+        } else {
+            return { text: "قادم", class: "status-future", isPast: false, isNear: false };
+        }
+    }
+
+    function createMailtoLink(reportTitle) {
+        const subject = encodeURIComponent(reportTitle);
+        return `mailto:${targetEmail}?subject=${subject}`;
+    }
     
-    --bg-color-dark: #2A2A2A;
-    --sidebar-bg-dark: #343A40;
-    --topbar-bg-dark: #343A40;
-    --card-bg-dark: #343A40; 
-    --text-color-dark: #E9ECEF;
-    --text-muted-dark: #ADB5BD;
-    --border-color-dark: #495057;
-    --primary-dark-dark: #455a64; 
+    function createCharts(data) {
+        if (!data || data.length === 0 || !departmentChartCanvas || !frequencyChartCanvas) return; 
 
-    --accent-gold: #C89638; 
-    --accent-gold-muted: #bd9a5f;
-    --accent-blue: #3498DB;
-    --accent-orange: #E67E22;
-    --accent-red: #E74C3C;
-    --accent-green: #2ECC71; 
-    --past-due-color: #95A5A6; 
+        const deptCtx = departmentChartCanvas.getContext('2d');
+        const freqCtx = frequencyChartCanvas.getContext('2d');
 
-    --sidebar-width: 240px;
-    --topbar-height: 65px;
-    --border-radius: 8px;
-    --transition-speed: 0.3s ease;
-}
+        const deptCounts = data.reduce((acc, report) => { acc[report[1]] = (acc[report[1]] || 0) + 1; return acc; }, {});
+        const freqCounts = data.reduce((acc, report) => { acc[report[3]] = (acc[report[3]] || 0) + 1; return acc; }, {});
+        
+        const goldColor = '#C89638'; 
+        const blueColor = '#3498DB';
+        const primaryDarkColor = '#2C3E50';
+        const mutedGoldColor = '#bd9a5f';
+        const greyColor = '#95A5A6';
+        const chartPieColors = [goldColor, blueColor, primaryDarkColor, mutedGoldColor, greyColor, '#E74C3C'];
 
-* { margin: 0; padding: 0; box-sizing: border-box; }
+        if(departmentChart) departmentChart.destroy();
+        if(frequencyChart) frequencyChart.destroy();
 
-body {
-    font-family: 'Cairo', sans-serif;
-    background-color: var(--bg-color-light);
-    color: var(--text-color-light);
-    transition: background-color var(--transition-speed), color var(--transition-speed);
-}
+        departmentChart = new Chart(deptCtx, { 
+            type: 'pie', 
+            data: { labels: Object.keys(deptCounts), datasets: [{ data: Object.values(deptCounts), backgroundColor: chartPieColors }] }, 
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' } } } 
+        });
 
-/* --- Dark Mode Overrides --- */
-body.dark-mode { background-color: var(--bg-color-dark); color: var(--text-color-dark); }
-body.dark-mode .sidebar { background-color: var(--sidebar-bg-dark); border-left: 1px solid var(--border-color-dark); }
-body.dark-mode .sidebar .sidebar-logo { filter: brightness(0) invert(1); }
-body.dark-mode .sidebar ul li a { color: var(--text-muted-dark); }
-body.dark-mode .sidebar ul li a:hover, body.dark-mode .sidebar ul li.active a { background-color: var(--border-color-dark); }
-body.dark-mode .sidebar-filter-section { border-top-color: var(--border-color-dark); color: var(--text-color-dark); }
-body.dark-mode .sidebar-filter-section input[type="date"] { background-color: #555; border-color: var(--border-color-dark); color: white; color-scheme: dark; }
-body.dark-mode .sidebar-filter-section button { background-color: var(--text-muted-dark); color: var(--bg-color-dark); }
-body.dark-mode .top-bar { background-color: var(--topbar-bg-dark); border-bottom: 1px solid var(--border-color-dark); }
-body.dark-mode .page-title { color: var(--text-color-dark); }
-body.dark-mode .search-bar { background-color: #555; border-color: var(--border-color-dark); color: white; }
-body.dark-mode .top-bar-actions .icon-button { color: var(--text-muted-dark); }
-body.dark-mode .kpi-card { background-color: var(--card-bg-dark); color: var(--text-color-dark); border-color: var(--accent-gold-muted); }
-body.dark-mode .kpi-card h4, body.dark-mode .kpi-card p { color: var(--text-color-dark); }
-body.dark-mode .kpi-icon { color: var(--accent-gold); }
-body.dark-mode .table-container, body.dark-mode .chart-container { background-color: var(--card-bg-dark); }
-body.dark-mode th, body.dark-mode td { border-bottom: 1px solid var(--border-color-dark); }
-body.dark-mode thead th { background-color: var(--border-color-dark); color: var(--text-color-dark); }
-body.dark-mode tbody tr:nth-child(even) { background-color: #383e44; }
-body.dark-mode tbody tr:hover { background-color: #444; }
-body.dark-mode .past-due td { opacity: 0.5; color: var(--text-muted-dark); }
-body.dark-mode .filter-container select { background-color: #555; border-color: var(--border-color-dark); color: white; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23C89638' viewBox='0 0 16 16'%3E%3Cpath fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3E%3C/svg%3E"); }
-body.dark-mode .pagination-container a { background-color: #444; color: var(--text-muted-dark); } /* Updated dark mode pagination link color */
-body.dark-mode .pagination-container .active a, body.dark-mode .pagination-container a:hover { background-color: var(--accent-gold); color: white; }
+        frequencyChart = new Chart(freqCtx, { 
+            type: 'bar', 
+            data: { labels: Object.keys(freqCounts), datasets: [{ label: 'عدد التقارير', data: Object.values(freqCounts), backgroundColor: goldColor }] },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } } 
+        });
+        chartsCreated = true;
+    }
+    
+    function populateTable(reportsToShow) {
+        tableBody.innerHTML = '';
+        if (reportsToShow.length === 0) {
+            tableBody.innerHTML = '<tr><td colspan="7">لا توجد تقارير تطابق البحث أو التصفية.</td></tr>';
+            return;
+        }
 
-/* --- Layout --- */
-.dashboard-container { display: flex; }
-.sidebar { width: var(--sidebar-width); height: 100vh; background-color: var(--sidebar-bg-light); position: fixed; right: 0; top: 0; border-left: 1px solid var(--border-color-light); transition: background-color var(--transition-speed), border-color var(--transition-speed); padding-top: 10px; box-shadow: -2px 0 5px rgba(0,0,0,0.05); z-index: 20; display: flex; flex-direction: column; }
-.main-content { margin-right: var(--sidebar-width); width: calc(100% - var(--sidebar-width)); padding-top: var(--topbar-height); }
-.content-wrapper { padding: 30px; }
+        reportsToShow.forEach(report => {
+            const [id, department, title, frequency, dateString] = report;
+            const statusInfo = getStatus(dateString);
+            const row = document.createElement('tr');
+            if (statusInfo.isPast) row.classList.add('past-due');
+            
+            row.innerHTML = `
+                <td>${id}</td>
+                <td>${department}</td>
+                <td>${title}</td>
+                <td>${frequency}</td>
+                <td>${dateString}</td>
+                <td><span class="status-tag ${statusInfo.class}">${statusInfo.text}</span></td>
+                <td>
+                    <a href="${createMailtoLink(title)}" class="icon-button" title="إرسال بريد">
+                       <i class="fas fa-envelope"></i>
+                    </a>
+                </td>
+            `;
+            tableBody.appendChild(row);
+        });
+    }
 
-/* --- Sidebar --- */
-.sidebar-header { text-align: center; margin-bottom: 20px; padding: 10px; }
-.sidebar-logo { max-width: 80%; padding: 10px 0; transition: filter var(--transition-speed); }
-.sidebar ul { list-style: none; flex-grow: 1; }
-.sidebar ul li a { display: flex; align-items: center; padding: 15px 20px; text-decoration: none; color: var(--text-muted-light); transition: background-color var(--transition-speed), color var(--transition-speed); border-right: 4px solid transparent; }
-.sidebar ul li a i { margin-left: 15px; width: 20px; text-align: center; font-size: 1.1em; }
-.sidebar ul li a:hover, .sidebar ul li.active a { background-color: var(--border-color-light); color: var(--accent-gold); border-right-color: var(--accent-gold); font-weight: 600; }
+    function updateKPIs(dataForKPIs) { // dataForKPIs is already filtered by search, dept, and date
+        let dueTodayCount = 0;
+        let nearNotificationCount = 0; // For notification dot, based on ALL data before date filter
+        let pastDueCount = 0;
+        let due3DaysOnlyCount = 0;
 
-/* --- Sidebar Date Filter --- */
-.sidebar-filter-section { padding: 20px; border-top: 1px solid var(--border-color-light); margin-top: auto; }
-.sidebar-filter-section h4 { margin-bottom: 15px; text-align: center; color: var(--primary-dark-light); }
-.date-filter-group { margin-bottom: 10px; }
-.date-filter-group label { display: block; margin-bottom: 5px; font-size: 0.9em; font-weight: 600; }
-.date-filter-group input[type="date"] { width: 100%; padding: 8px 10px; border: 1px solid var(--border-color-light); border-radius: 5px; font-family: 'Cairo', sans-serif; }
-#reset-date-filter { width: 100%; padding: 10px; margin-top: 10px; background-color: var(--accent-gold); color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: 600; transition: opacity var(--transition-speed); }
-#reset-date-filter:hover { opacity: 0.85; }
+        // Calculate specific KPIs based on the data passed (which is fully filtered)
+        dataForKPIs.forEach(report => {
+            const statusInfo = getStatus(report[4]); // report[4] is dateString
+            if (statusInfo.class === 'status-due') dueTodayCount++;
+            if (statusInfo.class === 'status-upcoming') due3DaysOnlyCount++; // isNear includes today
+            if (statusInfo.isPast) pastDueCount++;
+        });
+        
+        // Calculate nearNotificationCount based on data filtered by search and department ONLY
+        const selectedDept = departmentFilter.value;
+        const searchTerm = searchInput.value.toLowerCase();
+        const searchAndDeptFilteredData = allReportsData.filter(report => {
+             const matchesSearch = report[1].toLowerCase().includes(searchTerm) || 
+                                   report[2].toLowerCase().includes(searchTerm);
+             const matchesDept = (selectedDept === 'all') || (report[1] === selectedDept);
+             return matchesSearch && matchesDept;
+        });
+
+        searchAndDeptFilteredData.forEach(report => {
+            const statusInfo = getStatus(report[4]);
+             if (statusInfo.isNear) nearNotificationCount++;
+        });
 
 
-/* --- Top Bar --- */
-.top-bar { height: var(--topbar-height); background-color: var(--topbar-bg-light); border-bottom: 1px solid var(--border-color-light); position: fixed; top: 0; right: var(--sidebar-width); left: 0; display: flex; justify-content: flex-start; align-items: center; padding: 0 30px; transition: background-color var(--transition-speed), border-color var(--transition-speed); z-index: 10; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-.page-title { font-size: 1.2em; font-weight: 600; color: var(--text-color-light); transition: color var(--transition-speed); flex-grow: 1; }
-.search-bar { padding: 10px 15px; border: 1px solid var(--border-color-light); border-radius: var(--border-radius); width: 300px; transition: all var(--transition-speed); margin-left: 20px; }
-.search-bar:focus { border-color: var(--accent-blue); box-shadow: 0 0 5px rgba(52, 152, 219, 0.5); outline: none; }
-.top-bar-actions .icon-button { background: none; border: none; font-size: 1.3em; margin-left: 20px; cursor: pointer; color: var(--text-muted-light); transition: color var(--transition-speed); position: relative; }
-.icon-button:hover { color: var(--accent-gold); }
-.notification-dot { position: absolute; top: -3px; right: -5px; width: 8px; height: 8px; background-color: var(--accent-red); border-radius: 50%; display: block; }
-.hidden { display: none; }
+        kpiTotal.textContent = dataForKPIs.length; // Total matching all filters
+        kpiDueToday.textContent = dueTodayCount;
+        kpiDue3Days.textContent = due3DaysOnlyCount + dueTodayCount; 
+        kpiPastDue.textContent = pastDueCount;
+        
+        // New KPI
+        if (startDateInput.value && endDateInput.value) {
+            kpiDueInPeriod.textContent = dataForKPIs.length; 
+        } else {
+            kpiDueInPeriod.textContent = '-';
+        }
 
-/* --- KPI Cards --- */
-.kpi-cards-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); /* Adjusted for 5 cards */ gap: 20px; /* Slightly reduced gap */ margin-bottom: 40px; }
-.kpi-card { background-color: var(--card-bg-light); color: var(--text-color-light); padding: 20px; border-radius: var(--border-radius); text-align: center; box-shadow: 0 6px 15px rgba(0,0,0,0.08); transition: transform var(--transition-speed), box-shadow var(--transition-speed); border: 1px solid var(--border-color-light); position: relative; overflow: hidden; }
-.kpi-card h4 { color: var(--text-muted-light); font-size: 0.9em; /* Slightly smaller for more text */ }
-.kpi-card p { color: var(--text-color-light); }
-.kpi-card:hover { transform: translateY(-7px); box-shadow: 0 12px 25px rgba(0,0,0,0.12); }
-.kpi-icon { font-size: 2.2em; /* Slightly smaller icon */ color: var(--accent-gold); margin-bottom: 12px; /* Adjusted margin */ display: block; }
-.kpi-card h4 { margin-bottom: 8px; font-weight: 600; }
-.kpi-card p { font-size: 2em; /* Slightly smaller number */ font-weight: 700; }
-.kpi-card::after { content: ''; position: absolute; top: -50%; left: -75%; width: 50%; height: 200%; background: linear-gradient( to right, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.3) 50%, rgba(255, 255, 255, 0) 100% ); transform: skewX(-25deg); transition: left 0.85s ease; z-index: 1; }
-.kpi-card:hover::after { left: 125%; }
-body.dark-mode .kpi-card::after { background: linear-gradient(to right, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.1) 50%, rgba(255, 255, 255, 0) 100%);}
-.kpi-card > * { position: relative; z-index: 2; }
+        notificationDot.classList.toggle('hidden', nearNotificationCount === 0);
+    }
 
-/* --- Controls & Filter --- */
-.controls-container { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; }
-.controls-container h3 { margin-bottom: 0; flex-grow: 1; }
-.filter-container { display: flex; align-items: center; }
-.filter-container label { margin-left: 10px; font-weight: 600; }
-.filter-container select { padding: 10px 35px 10px 15px; border: 1px solid var(--border-color-light); border-radius: var(--border-radius); background-color: white; font-family: 'Cairo', sans-serif; font-size: 1em; cursor: pointer; appearance: none; -webkit-appearance: none; -moz-appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%23C89638' class='bi bi-chevron-down' viewBox='0 0 16 16'%3E%3Cpath fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: left 10px center; border-left: 5px solid var(--accent-gold); transition: all var(--transition-speed); }
-.filter-container select:focus { border-color: var(--accent-gold); outline: none; box-shadow: 0 0 5px rgba(200, 150, 56, 0.5); }
+    function displayPagination(totalRows) {
+        paginationControls.innerHTML = '';
+        const pageCount = Math.ceil(totalRows / rowsPerPage);
+        if (pageCount <= 1) return;
 
-/* --- Table --- */
-.table-container { background-color: var(--card-bg-light); border-radius: var(--border-radius); padding: 25px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); overflow-x: auto; margin-bottom: 20px; }
-table { width: 100%; border-collapse: collapse; }
-th, td { padding: 10px 12px; /* Reduced Padding */ text-align: right; border-bottom: 1px solid var(--border-color-light); font-size: 0.95em; }
-thead th { background-color: #f1f3f5; font-weight: 700; color: var(--primary-dark-light); }
-tbody tr:nth-child(even) { background-color: #fdfdfd; }
-tbody tr { transition: background-color var(--transition-speed); }
-tbody tr:hover { background-color: #eef5ff; }
-.past-due td { opacity: 0.7; } /* Changed to affect all cells in past-due row */
-.status-tag { padding: 4px 10px; border-radius: 12px; font-size: 0.75em; color: white; white-space: nowrap; font-weight: 600; text-transform: uppercase; }
-.status-due { background-color: var(--accent-orange); }
-.status-upcoming { background-color: var(--accent-blue); }
-.status-future { background-color: var(--accent-green); }
-.status-past { background-color: var(--past-due-color); } 
-td .icon-button { font-size: 1.2em; color: var(--text-muted-light); background: none; border: none; cursor: pointer; padding: 5px; margin-left: 5px; transition: color var(--transition-speed); }
-td .icon-button:hover { color: var(--accent-gold); }
+        const prevLi = document.createElement('li');
+        prevLi.innerHTML = `<a href="#" data-page="${currentPage - 1}">&laquo; السابق</a>`;
+        if (currentPage === 1) prevLi.classList.add('disabled');
+        paginationControls.appendChild(prevLi);
 
-/* --- Pagination --- */
-.pagination-container { display: flex; justify-content: center; align-items: center; padding: 20px 0; }
-.pagination-container ul { list-style: none; display: flex; padding: 0; margin: 0; box-shadow: 0 2px 5px rgba(0,0,0,0.1); border-radius: var(--border-radius); overflow: hidden; }
-.pagination-container a { display: block; padding: 10px 15px; text-decoration: none; background-color: var(--card-bg-light); color: var(--text-muted-light); /* Changed to Grey */ border-left: 1px solid var(--border-color-light); transition: all var(--transition-speed); cursor: pointer; }
-.pagination-container li:first-child a { border-right: 1px solid var(--border-color-light); }
-.pagination-container li.active a, .pagination-container li a:hover { background-color: var(--accent-gold); color: white; font-weight: 600; }
-.pagination-container li.disabled a { color: #bbb; background-color: #f0f0f0; cursor: not-allowed; }
-body.dark-mode .pagination-container li.disabled a { background-color: #555; color: #888; }
+        for (let i = 1; i <= pageCount; i++) {
+            const pageLi = document.createElement('li');
+            pageLi.innerHTML = `<a href="#" data-page="${i}">${i}</a>`;
+            if (i === currentPage) pageLi.classList.add('active');
+            paginationControls.appendChild(pageLi);
+        }
 
-/* --- Charts --- */
-.charts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 25px; margin-top: 40px; }
-.chart-container { background-color: var(--card-bg-light); padding: 25px; border-radius: var(--border-radius); box-shadow: 0 4px 12px rgba(0,0,0,0.05); height: 350px; position: relative; }
-.chart-container canvas { max-height: 100%; }
+        const nextLi = document.createElement('li');
+        nextLi.innerHTML = `<a href="#" data-page="${currentPage + 1}">التالي &raquo;</a>`;
+        if (currentPage === pageCount) nextLi.classList.add('disabled');
+        paginationControls.appendChild(nextLi);
 
-/* --- Views --- */
-.view { display: none; }
-.view.active-view { display: block; animation: fadeIn 0.5s ease; }
-@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        paginationControls.querySelectorAll('a').forEach(link => {
+            link.onclick = (e) => {
+                e.preventDefault();
+                const parentLi = link.parentElement;
+                if (parentLi.classList.contains('disabled') || parentLi.classList.contains('active')) return;
+                currentPage = parseInt(link.dataset.page);
+                renderCurrentPage();
+            };
+        });
+    }
+
+    function renderCurrentPage() {
+        const searchTerm = searchInput.value.toLowerCase();
+        const selectedDept = departmentFilter.value;
+        const startDateValue = startDateInput.value;
+        const endDateValue = endDateInput.value;
+
+        // Parse dates carefully, ensuring they are at the start/end of day for comparison
+        let startDate = null;
+        if (startDateValue) {
+            startDate = new Date(startDateValue);
+            startDate.setHours(0, 0, 0, 0);
+        }
+        let endDate = null;
+        if (endDateValue) {
+            endDate = new Date(endDateValue);
+            endDate.setHours(23, 59, 59, 999);
+        }
+        
+        filteredReportsData = allReportsData.filter(report => {
+            const reportDate = new Date(report[4]);
+            reportDate.setHours(0,0,0,0); // Normalize report date for comparison
+
+            const matchesSearch = report[1].toLowerCase().includes(searchTerm) || 
+                                  report[2].toLowerCase().includes(searchTerm);
+            const matchesDept = (selectedDept === 'all') || (report[1] === selectedDept);
+            const matchesStartDate = !startDate || reportDate >= startDate;
+            const matchesEndDate = !endDate || reportDate <= endDate;
+            return matchesSearch && matchesDept && matchesStartDate && matchesEndDate;
+        });
+
+        const startIndex = (currentPage - 1) * rowsPerPage;
+        const endIndex = startIndex + rowsPerPage;
+        const reportsToShow = filteredReportsData.slice(startIndex, endIndex);
+
+        populateTable(reportsToShow);
+        displayPagination(filteredReportsData.length);
+        updateKPIs(filteredReportsData); 
+    }
+    
+    function populateFilter(data) {
+        const departments = [...new Set(data.map(report => report[1]))]; 
+        departments.sort((a, b) => a.localeCompare(b, 'ar')); 
+        departmentFilter.innerHTML = '<option value="all">عرض الكل</option>';
+        departments.forEach(dept => {
+            const option = document.createElement('option');
+            option.value = dept;
+            option.textContent = dept;
+            departmentFilter.appendChild(option);
+        });
+    }
+
+    async function fetchData() {
+        try {
+            const response = await fetch(dataUrl);
+            if (!response.ok) throw new Error(`Network error: ${response.statusText}`);
+            allReportsData = await response.json();
+            populateFilter(allReportsData); 
+            renderCurrentPage(); 
+            // Charts are created when tab is displayed
+        } catch (error) {
+            console.error('Fetch Error:', error);
+            tableBody.innerHTML = '<tr><td colspan="7">فشل تحميل البيانات.</td></tr>';
+        }
+    }
+
+    function handleFilterAndSearch() {
+        currentPage = 1; 
+        renderCurrentPage();
+    }
+
+    function resetDateFilter() {
+        startDateInput.value = '';
+        endDateInput.value = '';
+        handleFilterAndSearch();
+    }
+
+    function toggleTheme() { /* ... unchanged ... */ }
+    function loadTheme() { /* ... unchanged ... */ }
+
+    function handleNavigation(event) {
+        event.preventDefault();
+        const clickedLi = event.target.closest('li');
+        if (!clickedLi || clickedLi.classList.contains('active')) return;
+        const viewId = clickedLi.dataset.view;
+        navLinks.forEach(link => link.classList.remove('active'));
+        views.forEach(view => view.classList.remove('active-view'));
+        clickedLi.classList.add('active');
+        document.getElementById(`${viewId}-section`).classList.add('active-view');
+        
+        if (viewId === 'analytics' && !chartsCreated) {
+            // Filter data for charts based on current search and department filters, but NOT date range
+            const searchTerm = searchInput.value.toLowerCase();
+            const selectedDept = departmentFilter.value;
+            const chartData = allReportsData.filter(report => {
+                const matchesSearch = report[1].toLowerCase().includes(searchTerm) || 
+                                  report[2].toLowerCase().includes(searchTerm);
+                const matchesDept = (selectedDept === 'all') || (report[1] === selectedDept);
+                return matchesSearch && matchesDept;
+            });
+            createCharts(chartData); 
+        }
+        if (viewId === 'calendar') console.log("Load Calendar View Now...");
+        if (viewId === 'timeline') console.log("Load Timeline View Now...");
+    }
+
+    // Event Listeners
+    searchInput.addEventListener('input', handleFilterAndSearch);
+    departmentFilter.addEventListener('change', handleFilterAndSearch);
+    startDateInput.addEventListener('change', handleFilterAndSearch);
+    endDateInput.addEventListener('change', handleFilterAndSearch);
+    resetDateBtn.addEventListener('click', resetDateFilter);
+    themeSwitcherBtn.addEventListener('click', toggleTheme);
+    navLinks.forEach(link => link.addEventListener('click', handleNavigation));
+
+    // Initial Setup
+    loadTheme();
+    fetchData();
+
+});
