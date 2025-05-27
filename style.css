@@ -14,11 +14,11 @@
     --bg-color-dark: #2A2A2A;
     --sidebar-bg-dark: #343A40;
     --topbar-bg-dark: #343A40;
-    --card-bg-dark: #343A40; 
+    --card-bg-dark: #3A3F44; 
     --text-color-dark: #E9ECEF;
     --text-muted-dark: #ADB5BD;
     --border-color-dark: #495057; 
-    --primary-dark-dark: #455a64; 
+    --primary-dark-dark: #546E7A; 
 
     --accent-gold: #C89638; 
     --accent-gold-muted: #bd9a5f; 
@@ -28,8 +28,8 @@
     --accent-green: #F5F5F5; 
     --past-due-color: #95A5A6; 
 
-    --calendar-hover-grey-light: #f0f0f0;
-    --calendar-hover-grey-dark: #484848;
+    --calendar-hover-grey-light: rgba(222, 191, 138, 0.15);
+    --calendar-hover-grey-dark: rgba(189, 154, 95, 0.25);
     --fc-today-button-bg-light: #D6DBDF;
     --fc-today-button-text-light: var(--primary-dark-light);
     --fc-today-button-hover-bg-light: #AEB6BF;
@@ -63,10 +63,11 @@ body.dark-mode .sidebar { background-color: var(--sidebar-bg-dark); border-left-
 body.dark-mode .sidebar .sidebar-logo { filter: brightness(0) invert(1); }
 body.dark-mode .sidebar ul li a { color: var(--text-muted-dark); }
 body.dark-mode .sidebar ul li a:hover, body.dark-mode .sidebar ul li.active a { background-color: var(--border-color-dark); color: var(--accent-gold); }
-body.dark-mode .sidebar-filter-section { border-top-color: var(--border-color-dark); color: var(--text-color-dark); }
+body.dark-mode .sidebar-filter-section { border-top-color: var(--border-color-dark); } /* Added color: var(--text-color-dark); below */
 body.dark-mode .sidebar-filter-section h4 { color: var(--text-color-dark); }
 body.dark-mode .sidebar-filter-section input[type="date"] { background-color: #555; border-color: var(--border-color-dark); color: white; color-scheme: dark; }
 body.dark-mode .sidebar-filter-section button { background-color: var(--text-muted-dark); color: var(--bg-color-dark); }
+body.dark-mode .sidebar-filter-section button#reset-date-filter { background-color: var(--accent-gold-muted); color: var(--primary-dark-dark); } /* Dark mode for reset button */
 body.dark-mode .top-bar { background-color: var(--topbar-bg-dark); border-bottom-color: var(--border-color-dark); }
 body.dark-mode .page-title { color: var(--text-color-dark); }
 body.dark-mode .search-bar { background-color: #555; border-color: var(--border-color-dark); color: white; }
@@ -81,7 +82,8 @@ body.dark-mode th, body.dark-mode td { border-bottom-color: var(--border-color-d
 body.dark-mode thead th { background-color: var(--border-color-dark); color: var(--text-color-dark); }
 body.dark-mode tbody tr:nth-child(even) { background-color: #2c3034; }
 body.dark-mode tbody tr:hover { background-color: var(--table-row-hover-dark); } 
-body.dark-mode .past-due td { opacity: 0.6; color: var(--text-muted-dark); } /* Adjusted from 0.5 */
+body.dark-mode .past-due td { opacity: 0.6; color: var(--text-muted-dark); } 
+body.dark-mode .filter-container label { color: var(--text-color-dark); }
 body.dark-mode .filter-container select { 
     background-color: var(--card-bg-dark); 
     border-color: var(--border-color-dark); 
@@ -89,6 +91,7 @@ body.dark-mode .filter-container select {
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%23C89638' class='bi bi-chevron-down' viewBox='0 0 16 16'%3E%3Cpath fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3E%3C/svg%3E");
     border-left-color: var(--accent-gold);
 }
+body.dark-mode .filter-container select option { background-color: var(--card-bg-dark); color: var(--text-color-dark); }
 body.dark-mode .pagination-container a { background-color: #444; color: var(--text-muted-dark); border-left-color: var(--border-color-dark); } 
 body.dark-mode .pagination-container li:first-child a { border-right-color: var(--border-color-dark); }
 body.dark-mode .pagination-container .active a, body.dark-mode .pagination-container a:hover { background-color: var(--accent-gold); color: white; }
@@ -108,13 +111,16 @@ body.dark-mode .fc-toolbar-title { color: var(--text-color-dark); }
 body.dark-mode .fc-daygrid-day-number { color: var(--text-muted-dark); }
 body.dark-mode .fc-col-header-cell-cushion { color: var(--text-color-dark); }
 body.dark-mode #calendar-placeholder { background-color: var(--card-bg-dark); }
-body.dark-mode .fc-event.event-class-past { background-color: #4A4A4A !important; border-color: #555555 !important; color: var(--text-muted-dark) !important; } 
-body.dark-mode .fc-event.event-class-future { background-color: #3A3F44 !important; border-color: #4A4F55 !important; color: var(--text-muted-dark) !important; } 
-body.dark-mode .fc-event.event-class-due { background-color: var(--accent-gold-muted) !important; border-color: var(--accent-gold-muted) !important; color: var(--primary-dark-dark) !important; }
-body.dark-mode .fc-event.event-class-upcoming { background-color: #546E7A !important; border-color: #546E7A !important; color: var(--text-color-dark) !important; } 
-body.dark-mode .fc-day-today .fc-daygrid-day-frame { background-color: var(--accent-gold-muted) !important; opacity: 0.6; }
+/* Event colors in dark mode - ensuring text color is readable */
+body.dark-mode .fc-event { /* Base for dark mode events if needed */ }
+body.dark-mode .fc-event[style*="background-color: rgb(233, 236, 239)"] /* Past: #E9ECEF */ { color: var(--primary-dark-dark) !important; } 
+body.dark-mode .fc-event[style*="background-color: rgb(189, 154, 95)"] /* Due: #bd9a5f */ { color: white !important; } 
+body.dark-mode .fc-event[style*="background-color: rgb(174, 198, 207)"] /* Upcoming: #AEC6CF */ { color: var(--primary-dark-dark) !important; } 
+body.dark-mode .fc-event[style*="background-color: rgb(245, 245, 245)"] /* Future: #F5F5F5 */ { color: var(--primary-dark-dark) !important; } 
+
+body.dark-mode .fc-day-today .fc-daygrid-day-frame { background-color: var(--accent-gold-muted) !important; opacity: 0.6; } /* Adjusted opacity */
 body.dark-mode .fc-daygrid-day-frame:not(.fc-day-today):hover { background-color: var(--calendar-hover-grey-dark) !important; } 
-body.dark-mode .fc-day-today .fc-daygrid-day-frame:hover { background-color: var(--accent-gold-muted) !important; opacity: 0.7; }
+body.dark-mode .fc-day-today .fc-daygrid-day-frame:hover { background-color: var(--accent-gold-muted) !important; opacity: 0.7; } /* Adjusted opacity */
 
 
 /* --- Layout & General --- */
@@ -154,16 +160,18 @@ body.dark-mode .fc-day-today .fc-daygrid-day-frame:hover { background-color: var
 .kpi-card:hover::after { left: 125%; }
 body.dark-mode .kpi-card::after { background: linear-gradient(to right, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.1) 50%, rgba(255, 255, 255, 0) 100%);}
 .kpi-card > * { position: relative; z-index: 2; }
+
+/* --- Controls & Filter (UPDATED) --- */
 .controls-container { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; }
 .controls-container h3 { margin-bottom: 0; flex-grow: 1; font-size: 1.3em; }
-.filter-container { display: flex; align-items: center; position: relative; /* For custom arrow positioning */ }
+.filter-container { display: flex; align-items: center; position: relative; }
 .filter-container label { margin-left: 10px; font-weight: 600; font-size: 0.9em; }
 .filter-container select { 
-    padding: 10px 15px; /* Adjusted padding */
-    padding-left: 35px; /* Space for custom arrow */
-    border: none; /* Removed border */
+    padding: 10px 15px; 
+    padding-left: 35px; 
+    border: 1px solid var(--border-color-light); /* Re-added border for select */
     border-radius: var(--border-radius);
-    background-color: var(--card-bg-light); /* Match card background */
+    background-color: var(--card-bg-light); 
     color: var(--text-color-light);
     font-family: 'Cairo', sans-serif;
     font-size: 1em;
@@ -171,45 +179,49 @@ body.dark-mode .kpi-card::after { background: linear-gradient(to right, rgba(255
     appearance: none; 
     -webkit-appearance: none;
     -moz-appearance: none;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.05); /* Subtle shadow */
+    /* Removed box-shadow and border-left from here, handled by container if needed */
     transition: all var(--transition-speed);
-    min-width: 200px; /* Ensure it has some width */
+    min-width: 200px; 
 }
-/* Custom Arrow for Select */
-.filter-container::after {
-    content: '\f078'; /* Font Awesome chevron-down */
+.filter-container::after { /* Custom Arrow for Select */
+    content: '\f078'; 
     font-family: 'Font Awesome 6 Free';
     font-weight: 900;
     color: var(--accent-gold);
     position: absolute;
-    left: 12px; /* Position arrow on the left */
+    left: 12px; 
     top: 50%;
     transform: translateY(-50%);
-    pointer-events: none; /* So it doesn't interfere with select click */
+    pointer-events: none; 
     font-size: 0.8em;
 }
 body.dark-mode .filter-container select {
     background-color: var(--card-bg-dark);
     color: var(--text-color-dark);
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    border-color: var(--border-color-dark); /* Border for dark mode select */
 }
-body.dark-mode .filter-container::after {
-    color: var(--accent-gold-muted);
-}
-
+body.dark-mode .filter-container::after { color: var(--accent-gold-muted); }
 .filter-container select:focus { 
     outline: none; 
-    box-shadow: 0 0 0 2px var(--accent-gold-muted), 0 2px 8px rgba(0,0,0,0.1); /* Focus style */
+    border-color: var(--accent-gold); /* Gold border on focus */
+    box-shadow: 0 0 0 2px rgba(200, 150, 56, 0.3); 
 }
-/* Styling options is very limited and browser-dependent */
+/* Styling select options is very limited */
 .filter-container select option {
-    background-color: var(--card-bg-light); /* Or sidebar-bg-light */
+    background: var(--card-bg-light); /* Fallback, may not apply in all browsers */
     color: var(--text-color-light);
-    padding: 10px; /* May not apply everywhere */
+    padding: 8px; /* May not apply */
 }
-/* Attempt to style option hover - may not work in all browsers */
-/* For browsers that support it (mostly WebKit based like Chrome/Edge for background) */
-/* .filter-container select option:hover { background-color: var(--accent-gold-muted) !important; color: white !important; } */
+/* Attempt to style option hover - VERY BROWSER DEPENDENT */
+/* This often does not work reliably for native <option> elements */
+/* .filter-container select option:hover { 
+    background-color: rgba(222, 191, 138, 0.2) !important; 
+    color: var(--primary-dark-light) !important;
+} */
+/* body.dark-mode .filter-container select option:hover {
+    background-color: rgba(189, 154, 95, 0.15) !important;
+    color: var(--text-color-dark) !important;
+} */
 
 
 .table-container { background-color: var(--card-bg-light); border-radius: var(--border-radius); padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); overflow-x: auto; margin-bottom: 20px; }
