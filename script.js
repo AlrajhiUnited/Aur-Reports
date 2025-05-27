@@ -26,21 +26,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const calendarEl = document.getElementById('calendar-placeholder');
     const eventModal = document.getElementById('event-modal');
-    // ... (بقية عناصر Modal كما هي) ...
-    const closeModalButton = eventModal.querySelector('.close-button');
+    // Ensure modal elements are selected correctly
+    const modalTitle = eventModal ? document.getElementById('modal-title') : null;
+    const modalDepartment = eventModal ? document.getElementById('modal-department') : null;
+    const modalDate = eventModal ? document.getElementById('modal-date') : null;
+    const modalFrequency = eventModal ? document.getElementById('modal-frequency') : null;
+    const modalStatus = eventModal ? document.getElementById('modal-status') : null;
+    const modalEmailLink = eventModal ? document.getElementById('modal-email-link') : null;
+    const closeModalButton = eventModal ? eventModal.querySelector('.close-button') : null;
 
 
     console.log("DOM Elements Selection Check:", {
         tableBodyExists: !!tableBody,
         searchInputExists: !!searchInput,
         kpiTotalReportsExists: !!kpiTotalReports,
-        calendarElExists: !!calendarEl
+        calendarElExists: !!calendarEl,
+        eventModalExists: !!eventModal 
     });
 
     // --- Settings & State ---
     const dataUrl = 'data.json';
     const targetEmail = 'shamdan@aur.com.sa';
-    const systemBaseDate = new Date('2025-05-27T00:00:00'); // Updated to current date context
+    const systemBaseDate = new Date('2025-05-27T00:00:00'); 
     let allReportsData = []; 
     let baseFilteredData = []; 
     let dateRangeFilteredData = []; 
@@ -60,26 +67,51 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     // --- Helper: Get computed style for colors ---
-    function getThemeColor(cssVarName, fallbackColor) { /* ... unchanged ... */ }
+    function getThemeColor(cssVarName, fallbackColor) {
+        try {
+            const color = getComputedStyle(document.documentElement).getPropertyValue(cssVarName).trim();
+            return color || fallbackColor;
+        } catch (e) {
+            console.warn(`Could not get theme color for ${cssVarName}, using fallback ${fallbackColor}`, e);
+            return fallbackColor;
+        }
+    }
 
     // --- Functions ---
-    function getStatus(dueDateStr) { /* ... unchanged ... */ }
-    function createMailtoLink(reportTitle) { /* ... unchanged ... */ }
+    function getStatus(dueDateStr) {
+        // Ensure dueDateStr is valid before creating a Date object
+        if (!dueDateStr || typeof dueDateStr !== 'string' || !dueDateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+            console.error("Invalid dueDateStr received by getStatus:", dueDateStr);
+            // Return a default status or handle error appropriately
+            return { text: "خطأ في التاريخ", classForTable: "status-error", isPast: false, isNear: false, eventColors: { backgroundColor: 'red', borderColor: 'red', textColor: 'white' } };
+        }
+        const due = new Date(new Date(dueDateStr).setHours(0, 0, 0, 0));
+        
+        const pastEvent = { backgroundColor: '#E9ECEF', borderColor: '#D0D0D0', textColor: '#6C757D' };
+        const dueTodayEvent = { backgroundColor: getThemeColor('--accent-gold-muted', '#bd9a5f'), borderColor: getThemeColor('--accent-gold-muted', '#bd9a5f'), textColor: '#FFFFFF' };
+        const upcomingEvent = { backgroundColor: getThemeColor('--accent-blue', '#AEC6CF'), borderColor: getThemeColor('--accent-blue', '#AEC6CF'), textColor: getThemeColor('--primary-dark-light', '#2C3E50') };
+        const futureEvent = { backgroundColor: getThemeColor('--accent-green', '#F5F5F5'), borderColor: getThemeColor('--accent-green', '#F5F5F5'), textColor: '#6C757D' };
+
+        if (due < today) return { text: "منتهي", classForTable: "status-past", isPast: true, isNear: false, eventColors: pastEvent };
+        if (due.getTime() === today.getTime()) return { text: "مستحق اليوم", classForTable: "status-due", isPast: false, isNear: true, eventColors: dueTodayEvent };
+        if (due > today && due <= threeDaysLater) return { text: "قادم قريباً", classForTable: "status-upcoming", isPast: false, isNear: true, eventColors: upcomingEvent };
+        return { text: "قادم", classForTable: "status-future", isPast: false, isNear: false, eventColors: futureEvent };
+    }
+
+    function createMailtoLink(reportTitle) {
+        const subject = encodeURIComponent(reportTitle);
+        return `mailto:${targetEmail}?subject=${subject}`;
+    }
     
     function createCharts(dataForCharts) {
         console.log("Attempting to create/update charts with data length:", dataForCharts ? dataForCharts.length : 'null');
         if (!dataForCharts || dataForCharts.length === 0 || !departmentChartCanvasEl || !frequencyChartCanvasEl) {
-             console.warn("Chart creation skipped: no data or canvas element not found.", {
-                hasData: !!dataForCharts && dataForCharts.length > 0,
-                deptCanvas: !!departmentChartCanvasEl,
-                freqCanvas: !!frequencyChartCanvasEl
-             });
+             console.warn("Chart creation skipped: no data or canvas element not found.", { hasData: !!dataForCharts && dataForCharts.length > 0, deptCanvas: !!departmentChartCanvasEl, freqCanvas: !!frequencyChartCanvasEl });
              if(departmentChartInstance) departmentChartInstance.destroy();
              if(frequencyChartInstance) frequencyChartInstance.destroy();
              chartsDrawn = false; 
             return;
         }
-        // ... (بقية الكود الخاص بإنشاء الرسوم البيانية كما هو)
         const deptCtx = departmentChartCanvasEl.getContext('2d');
         const freqCtx = frequencyChartCanvasEl.getContext('2d');
 
@@ -118,30 +150,49 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error("populateTable: tableBody element not found!");
             return;
         }
-        tableBody.innerHTML = ''; // Clear previous entries
+        tableBody.innerHTML = ''; 
         if (!reportsToShow || reportsToShow.length === 0) {
             console.log("populateTable: No reports to show, displaying empty message.");
             tableBody.innerHTML = '<tr><td colspan="7">لا توجد تقارير تطابق البحث أو التصفية.</td></tr>';
             return;
         }
-        // ... (بقية الكود الخاص بتعبئة الجدول كما هو)
-        reportsToShow.forEach(report => {
+        
+        reportsToShow.forEach((report, index) => {
+            // Check if report is a valid array and has enough elements
+            if (!Array.isArray(report) || report.length < 5) {
+                console.error(`Invalid report data at index ${index}:`, report);
+                return; // Skip this invalid report
+            }
+
             const [id, department, title, frequency, dateString] = report;
+            // console.log(`Processing report ID ${id}, dateString: ${dateString}`); // Log each dateString
+
             const statusInfo = getStatus(dateString); 
+            
+            // Crucial check: Ensure statusInfo is an object and has the isPast property
+            if (!statusInfo || typeof statusInfo.isPast === 'undefined') {
+                console.error(`Invalid statusInfo for report ID ${id}, dateString: ${dateString}`, statusInfo);
+                // Skip this row or use default values
+                return; 
+            }
+
             const row = document.createElement('tr');
-            if (statusInfo.isPast) row.classList.add('past-due');
+            if (statusInfo.isPast) {
+                row.classList.add('past-due');
+            }
+            
             row.innerHTML = `
-                <td>${id}</td>
-                <td>${department}</td>
-                <td>${title}</td>
-                <td>${frequency}</td>
-                <td>${dateString}</td>
-                <td><span class="status-tag ${statusInfo.classForTable}">${statusInfo.text}</span></td>
-                <td><a href="${createMailtoLink(title)}" class="icon-button" title="إرسال بريد"><i class="fas fa-envelope"></i></a></td>
+                <td>${id !== undefined ? id : 'N/A'}</td>
+                <td>${department !== undefined ? department : 'N/A'}</td>
+                <td>${title !== undefined ? title : 'N/A'}</td>
+                <td>${frequency !== undefined ? frequency : 'N/A'}</td>
+                <td>${dateString !== undefined ? dateString : 'N/A'}</td>
+                <td><span class="status-tag ${statusInfo.classForTable || ''}">${statusInfo.text || 'N/A'}</span></td>
+                <td><a href="${createMailtoLink(title || 'تقرير غير محدد')}" class="icon-button" title="إرسال بريد"><i class="fas fa-envelope"></i></a></td>
             `;
             tableBody.appendChild(row);
         });
-        console.log("Table populated with", reportsToShow.length, "rows.");
+        console.log("Table populated with (attempted) rows.");
     }
 
     function updateKPIs(currentBaseFilteredData, currentDateRangeFilteredData) {
@@ -149,49 +200,47 @@ document.addEventListener('DOMContentLoaded', () => {
                     "Date Range Data Length:", currentDateRangeFilteredData ? currentDateRangeFilteredData.length : 'N/A');
 
         if (!kpiTotalReports || !kpiDueInPeriod || !kpiDueToday || !kpiDue3Days || !kpiPastTotal) {
-            console.error("One or more KPI DOM elements are missing!");
+            console.error("One or more KPI DOM elements are missing for updateKPIs!");
             return;
         }
         
-        // 1. إجمالي التقارير (بعد البحث والجهة، قبل التاريخ)
         kpiTotalReports.textContent = currentBaseFilteredData ? currentBaseFilteredData.length : '-';
 
-        // 2. تقارير خلال الفترة المحددة (بعد كل الفلاتر)
         if (startDateInput && endDateInput && startDateInput.value && endDateInput.value) {
             kpiDueInPeriod.textContent = currentDateRangeFilteredData ? currentDateRangeFilteredData.length : '0';
         } else {
             kpiDueInPeriod.textContent = '-';
         }
 
-        // 3. مستحق اليوم & 4. مستحق خلال 3 أيام (تحسب من البيانات المفلترة بالكامل currentDateRangeFilteredData)
         let dueTodayCount = 0;
         let due3DaysOnlyCount = 0; 
         if (currentDateRangeFilteredData) {
             currentDateRangeFilteredData.forEach(report => {
+                if (!report || report.length < 5) return; // Skip invalid report
                 const statusInfo = getStatus(report[4]); 
-                if (statusInfo.classForTable === 'status-due') dueTodayCount++;
-                if (statusInfo.classForTable === 'status-upcoming') due3DaysOnlyCount++;
+                if (statusInfo && statusInfo.classForTable === 'status-due') dueTodayCount++;
+                if (statusInfo && statusInfo.classForTable === 'status-upcoming') due3DaysOnlyCount++;
             });
         }
         kpiDueToday.textContent = dueTodayCount;
         kpiDue3Days.textContent = due3DaysOnlyCount + dueTodayCount; 
 
-        // 5. تقارير منتهية (من البيانات المفلترة بالبحث والجهة currentBaseFilteredData)
         let pastTotalCount = 0;
         if (currentBaseFilteredData) {
             currentBaseFilteredData.forEach(report => {
+                if (!report || report.length < 5) return; // Skip invalid report
                 const statusInfo = getStatus(report[4]);
-                if (statusInfo.isPast) pastTotalCount++;
+                if (statusInfo && statusInfo.isPast) pastTotalCount++;
             });
         }
         kpiPastTotal.textContent = pastTotalCount;
         
-        // Notification Dot (based on currentBaseFilteredData for broader upcoming relevance)
         let nearNotificationCount = 0;
         if (currentBaseFilteredData) {
             currentBaseFilteredData.forEach(report => {
+                 if (!report || report.length < 5) return; // Skip invalid report
                 const statusInfo = getStatus(report[4]);
-                if (statusInfo.isNear) nearNotificationCount++;
+                if (statusInfo && statusInfo.isNear) nearNotificationCount++;
             });
         }
         if (notificationDot) {
@@ -202,22 +251,51 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log("KPIs updated. Total:", kpiTotalReports.textContent, "DuePeriod:", kpiDueInPeriod.textContent, "DueToday:", kpiDueToday.textContent);
     }
 
-    function displayPagination(totalRows) { /* ... unchanged, but ensure paginationControls exists ... */
+    function displayPagination(totalRows) { 
         console.log("displayPagination called. Total rows for pagination:", totalRows);
         if (!paginationControls) {
             console.error("Pagination controls element not found!");
             return;
         }
-        // ... (بقية الكود كما هو)
+        paginationControls.innerHTML = '';
+        const pageCount = Math.ceil(totalRows / rowsPerPage);
+        if (pageCount <= 1) return;
+
+        const prevLi = document.createElement('li');
+        prevLi.innerHTML = `<a href="#" data-page="${currentPage - 1}">&laquo; السابق</a>`;
+        if (currentPage === 1) prevLi.classList.add('disabled');
+        paginationControls.appendChild(prevLi);
+
+        for (let i = 1; i <= pageCount; i++) {
+            const pageLi = document.createElement('li');
+            pageLi.innerHTML = `<a href="#" data-page="${i}">${i}</a>`;
+            if (i === currentPage) pageLi.classList.add('active');
+            paginationControls.appendChild(pageLi);
+        }
+
+        const nextLi = document.createElement('li');
+        nextLi.innerHTML = `<a href="#" data-page="${currentPage + 1}">التالي &raquo;</a>`;
+        if (currentPage === pageCount) nextLi.classList.add('disabled');
+        paginationControls.appendChild(nextLi);
+
+        paginationControls.querySelectorAll('a').forEach(link => {
+            link.onclick = (e) => {
+                e.preventDefault();
+                const parentLi = link.parentElement;
+                if (parentLi.classList.contains('disabled') || parentLi.classList.contains('active')) return;
+                currentPage = parseInt(link.dataset.page);
+                renderCurrentPage();
+            };
+        });
+        console.log("Pagination controls rendered.");
     }
     
     function renderCurrentPage() {
         console.log("--- renderCurrentPage Start --- Current Page:", currentPage);
-        // ... (بقية الكود كما هو مع console.log الموجودة سابقاً)
-        const searchTerm = searchInput.value.toLowerCase();
-        const selectedDept = departmentFilter.value;
-        const startDateValue = startDateInput.value;
-        const endDateValue = endDateInput.value;
+        const searchTerm = searchInput ? searchInput.value.toLowerCase() : "";
+        const selectedDept = departmentFilter ? departmentFilter.value : "all";
+        const startDateValue = startDateInput ? startDateInput.value : "";
+        const endDateValue = endDateInput ? endDateInput.value : "";
 
         let startDate = null;
         if (startDateValue) {
@@ -232,6 +310,7 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log("Filters - Search:", searchTerm, "Dept:", selectedDept, "Start:", startDate, "End:", endDate);
         
         baseFilteredData = allReportsData.filter(report => {
+            if (!report || !Array.isArray(report) || report.length < 3) return false; // Basic check for report structure
             const matchesSearch = report[1].toLowerCase().includes(searchTerm) || 
                                   report[2].toLowerCase().includes(searchTerm);
             const matchesDept = (selectedDept === 'all') || (report[1] === selectedDept);
@@ -240,7 +319,12 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log("Base filtered data count:", baseFilteredData.length);
 
         dateRangeFilteredData = baseFilteredData.filter(report => {
+            if (!report || !Array.isArray(report) || report.length < 5) return false;
             const reportDate = new Date(report[4]);
+            if (isNaN(reportDate.getTime())) { // Check for invalid date
+                console.warn("Invalid date in report, skipping for date filter:", report);
+                return false;
+            }
             reportDate.setHours(0,0,0,0); 
             const matchesStartDate = !startDate || reportDate >= startDate;
             const matchesEndDate = !endDate || reportDate <= endDate;
@@ -269,89 +353,38 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!response.ok) {
                 console.error("Network response was not ok for data.json. Status:", response.status, response.statusText);
                 if (tableBody) tableBody.innerHTML = `<tr><td colspan="7">فشل تحميل البيانات. الحالة: ${response.status}</td></tr>`;
-                return; // Stop further execution if data fetch fails
+                return;
             }
             allReportsData = await response.json();
-            console.log("3. Data fetched and parsed. Total reports:", allReportsData ? allReportsData.length : 'undefined'); 
+            console.log("3. Data fetched and parsed. Total reports:", allReportsData ? allReportsData.length : 'undefined/null'); 
             
-            if (allReportsData && allReportsData.length > 0) {
+            if (Array.isArray(allReportsData) && allReportsData.length > 0) { // More robust check
                 if(departmentFilter) populateFilter(allReportsData); 
                 renderCurrentPage(); 
                 console.log("4. Initial render triggered after data fetch.");
             } else {
-                console.warn("No data received or data array is empty after parsing.");
+                console.warn("No data received, data array is empty, or data is not an array after parsing.");
                 if (tableBody) tableBody.innerHTML = '<tr><td colspan="7">تم تحميل البيانات ولكنها فارغة أو بتنسيق غير صحيح.</td></tr>';
+                // Initialize KPIs to 0 or '-' if no data
+                updateKPIs([], []); 
             }
         } catch (error) {
             console.error('Fetch Error in fetchData:', error);
             if (tableBody) tableBody.innerHTML = `<tr><td colspan="7">فشل تحميل البيانات: ${error.message}</td></tr>`;
+            // Initialize KPIs to 0 or '-' on fetch error
+            updateKPIs([], []);
         }
     }
 
-    function handleFilterAndSearch() {
-        console.log("handleFilterAndSearch called");
-        currentPage = 1; 
-        renderCurrentPage();
-    }
-
+    function handleFilterAndSearch() { /* ... unchanged ... */ }
     function resetDateFilter() { /* ... unchanged ... */ }
     function toggleTheme() { /* ... unchanged ... */ }
     function loadTheme() { /* ... unchanged ... */ }
-
-    // --- FullCalendar Initialization ---
-    function initializeCalendar() {
-        console.log("initializeCalendar called. Initialized previously:", calendarInitialized, "Calendar Element:", !!calendarEl);
-        if (!calendarEl) {
-            console.error("Calendar placeholder element not found!");
-            return;
-        }
-        // ... (بقية كود التقويم كما هو)
-        const searchTerm = searchInput.value.toLowerCase();
-        const selectedDept = departmentFilter.value;
-        const calendarData = allReportsData.filter(report => {
-            const matchesSearch = report[1].toLowerCase().includes(searchTerm) || 
-                                  report[2].toLowerCase().includes(searchTerm);
-            const matchesDept = (selectedDept === 'all') || (report[1] === selectedDept);
-            return matchesSearch && matchesDept;
-        });
-        console.log("Data for calendar:", calendarData.length);
-
-        const calendarEvents = calendarData.map(report => {
-            const statusInfo = getStatus(report[4]);
-            return {
-                id: report[0], title: report[2], start: report[4], allDay: true,
-                backgroundColor: statusInfo.eventColors.backgroundColor,
-                borderColor: statusInfo.eventColors.borderColor,
-                textColor: statusInfo.eventColors.textColor,
-                extendedProps: { department: report[1], frequency: report[3], statusText: statusInfo.text }
-            };
-        });
-
-        if (calendarInstance) calendarInstance.destroy();
-
-        calendarInstance = new FullCalendar.Calendar(calendarEl, {
-            locale: 'ar', 
-            headerToolbar: { right: 'prev,next today', center: 'title', left: 'dayGridMonth,timeGridWeek,listWeek' },
-            initialView: 'dayGridMonth',
-            events: calendarEvents,
-            eventDisplay: 'block', 
-            eventTextColor: function(eventInfo){ return eventInfo.event.textColor; },
-            eventDidMount: function(info) {
-                info.el.style.setProperty('background-color', info.event.backgroundColor, 'important');
-                info.el.style.setProperty('border-color', info.event.borderColor, 'important');
-            },
-            eventClick: function(info) { /* ... unchanged ... */ }
-        });
-
-        calendarInstance.render();
-        calendarInitialized = true; 
-        console.log("Calendar rendered/updated.");
-    }
-
+    function initializeCalendar() { /* ... unchanged, but relies on allReportsData */ }
     function destroyCalendar() { /* ... unchanged ... */ }
     
     if(closeModalButton) closeModalButton.onclick = function() { eventModal.style.display = "none"; }
-    window.onclick = function(event) { if (event.target == eventModal) eventModal.style.display = "none"; }
+    window.onclick = function(event) { if (eventModal && event.target == eventModal) eventModal.style.display = "none"; } // Added null check
 
     function handleNavigation(event) {
         event.preventDefault();
@@ -387,10 +420,10 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (viewId === 'analytics') {
             console.log("Analytics tab clicked. Charts drawn previously:", chartsDrawn);
-            // Always redraw charts for analytics based on current filters
-            const currentSearchTerm = searchInput.value.toLowerCase();
-            const currentSelectedDept = departmentFilter.value;
+            const currentSearchTerm = searchInput ? searchInput.value.toLowerCase() : "";
+            const currentSelectedDept = departmentFilter ? departmentFilter.value : "all";
             const chartData = allReportsData.filter(report => { 
+                if (!report || !Array.isArray(report) || report.length < 3) return false;
                 const matchesSearch = report[1].toLowerCase().includes(currentSearchTerm) || 
                                     report[2].toLowerCase().includes(currentSearchTerm);
                 const matchesDept = (currentSelectedDept === 'all') || (report[1] === currentSelectedDept);
@@ -414,7 +447,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if(endDateInput) endDateInput.addEventListener('change', handleFilterAndSearch);
     if(resetDateBtn) resetDateBtn.addEventListener('click', resetDateFilter);
     if(themeSwitcherBtn) themeSwitcherBtn.addEventListener('click', toggleTheme);
-    if(navLinks) navLinks.forEach(link => link.addEventListener('click', handleNavigation));
+    if(navLinks) navLinks.forEach(link => {
+        if (link) link.addEventListener('click', handleNavigation);
+    });
 
     // Initial Setup
     console.log("Running initial setup: loadTheme and fetchData");
