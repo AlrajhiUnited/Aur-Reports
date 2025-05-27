@@ -66,19 +66,20 @@ document.addEventListener('DOMContentLoaded', () => {
             const color = getComputedStyle(document.documentElement).getPropertyValue(cssVarName).trim();
             return color || fallbackColor;
         } catch (e) {
+            // console.warn(`Could not get theme color for ${cssVarName}, using fallback ${fallbackColor}`, e);
             return fallbackColor;
         }
     }
 
     function getStatus(dueDateStr) {
-        const defaultErrorStatus = { text: "خطأ", classForTable: "status-error", isPast: false, isNear: false, eventColors: { backgroundColor: 'lightgray', borderColor: 'gray', textColor: 'black' } };
+        const defaultErrorStatus = { text: "تاريخ غير صالح", classForTable: "status-error", isPast: false, isNear: false, eventColors: { backgroundColor: 'lightgray', borderColor: 'gray', textColor: 'black' } };
         if (!dueDateStr || typeof dueDateStr !== 'string' || !dueDateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
-            console.warn("Invalid dueDateStr for getStatus:", dueDateStr);
+            // console.warn("Invalid dueDateStr for getStatus:", dueDateStr);
             return defaultErrorStatus;
         }
         const due = new Date(dueDateStr);
         if (isNaN(due.getTime())) {
-            console.warn("Failed to parse dueDateStr into valid date:", dueDateStr);
+            // console.warn("Failed to parse dueDateStr into valid date:", dueDateStr);
             return defaultErrorStatus;
         }
         due.setHours(0, 0, 0, 0);
@@ -96,22 +97,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function createMailtoLink(reportTitle) {
         const subject = encodeURIComponent(`تقرير: ${reportTitle}`);
-        const bodyLines = [
-            "السلام عليكم",
-            "",
-            `مرفق لكم تقرير "${reportTitle}"`,
-            "",
-            "مع وافر التحية والتقدير"
-        ];
-        // Note: CSS styling (font size, alignment) for email body is controlled by the user's email client.
-        // We can use %0D%0A for new lines if encodeURIComponent doesn't handle \n well across all clients.
+        const bodyLines = ["السلام عليكم","","مرفق لكم تقرير \"" + reportTitle + "\"","","مع وافر التحية والتقدير"];
         const body = encodeURIComponent(bodyLines.join('\n')).replace(/%0A/g, '%0D%0A');
         return `mailto:${targetEmail}?subject=${subject}&body=${body}`;
     }
     
     function createCharts(dataForCharts) {
-        console.log("Attempting createCharts. Data length:", dataForCharts ? dataForCharts.length : 'null');
-        // ... (rest of function)
+        // console.log("Attempting createCharts. Data length:", dataForCharts ? dataForCharts.length : 'null');
          if (!dataForCharts || dataForCharts.length === 0 || !departmentChartCanvasEl || !frequencyChartCanvasEl) {
              if(departmentChartInstance) departmentChartInstance.destroy();
              if(frequencyChartInstance) frequencyChartInstance.destroy();
@@ -123,12 +115,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const deptCounts = dataForCharts.reduce((acc, report) => { acc[report[1]] = (acc[report[1]] || 0) + 1; return acc; }, {});
         const freqCounts = dataForCharts.reduce((acc, report) => { acc[report[3]] = (acc[report[3]] || 0) + 1; return acc; }, {});
         const goldColor = getThemeColor('--accent-gold', '#C89638'); 
-        const blueColor = getThemeColor('--accent-blue', '#3498DB'); 
+        const blueColorOriginal = getThemeColor('--accent-blue', '#3498DB'); // Use the original blue for pie
         const primaryDarkColor = getThemeColor('--primary-dark-light', '#2C3E50');
         const mutedGoldColor = getThemeColor('--accent-gold-muted', '#bd9a5f');
         const greyColor = getThemeColor('--past-due-color', '#95A5A6');
         const redColor = getThemeColor('--accent-red', '#E74C3C');
-        const chartPieColors = [goldColor, blueColor, primaryDarkColor, mutedGoldColor, greyColor, redColor];
+        const chartPieColors = [goldColor, blueColorOriginal, primaryDarkColor, mutedGoldColor, greyColor, redColor];
         if(departmentChartInstance) departmentChartInstance.destroy();
         if(frequencyChartInstance) frequencyChartInstance.destroy();
         departmentChartInstance = new Chart(deptCtx, { type: 'pie', data: { labels: Object.keys(deptCounts), datasets: [{ data: Object.values(deptCounts), backgroundColor: chartPieColors }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' } } } });
@@ -137,28 +129,28 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     function populateTable(reportsToShow) {
-        console.log("populateTable: Called. Reports to show count:", reportsToShow ? reportsToShow.length : 'undefined');
+        console.log("populateTable: Starting. Reports to show count:", reportsToShow ? reportsToShow.length : 'undefined');
         if (!tableBody) {
             console.error("populateTable: tableBody element is NULL. Aborting.");
             return;
         }
         tableBody.innerHTML = ''; 
         if (!reportsToShow || reportsToShow.length === 0) {
-            console.log("populateTable: No reports to show, displaying empty message.");
+            // console.log("populateTable: No reports to show, displaying empty message.");
             tableBody.innerHTML = '<tr><td colspan="7">لا توجد تقارير تطابق البحث أو التصفية.</td></tr>';
             return;
         }
         
         reportsToShow.forEach((report, index) => {
             if (!Array.isArray(report) || report.length < 5) {
-                console.warn(`populateTable: Skipping invalid report data at index ${index}:`, report);
+                // console.warn(`populateTable: Skipping invalid report data structure at index ${index}:`, report);
                 return; 
             }
             const [id, department, title, frequency, dateString] = report;
             const statusInfo = getStatus(dateString); 
             
-            if (!statusInfo || typeof statusInfo.isPast === 'undefined') { // Should be caught by getStatus now
-                console.error(`populateTable: Invalid statusInfo for report ID ${id}. Skipping row.`, statusInfo);
+            if (!statusInfo || typeof statusInfo.classForTable === 'undefined') { // Check classForTable as it's used
+                console.error(`populateTable: Invalid statusInfo for report ID ${id}. statusInfo:`, statusInfo, "dateString:", dateString);
                 return; 
             }
 
@@ -171,21 +163,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td>${title !== undefined ? title : ''}</td>
                 <td>${frequency !== undefined ? frequency : ''}</td>
                 <td>${dateString !== undefined ? dateString : ''}</td>
-                <td><span class="status-tag ${statusInfo.classForTable || ''}">${statusInfo.text || ''}</span></td>
+                <td><span class="status-tag ${statusInfo.classForTable}">${statusInfo.text}</span></td>
                 <td><a href="${createMailtoLink(title || '')}" class="icon-button" title="إرسال بريد"><i class="fas fa-envelope"></i></a></td>
             `;
             tableBody.appendChild(row);
         });
-        console.log("populateTable: Finished. Table populated with", tableBody.rows.length, "rows.");
+        // console.log("populateTable: Finished. Table populated with", tableBody.rows.length, "rows.");
     }
 
     function updateKPIs(currentBaseFilteredData, currentDateRangeFilteredData) {
-        console.log("updateKPIs: Called. BaseData:", currentBaseFilteredData.length, "DateRangeData:", currentDateRangeFilteredData.length);
+        // console.log("updateKPIs: Called. BaseData:", currentBaseFilteredData.length, "DateRangeData:", currentDateRangeFilteredData.length);
         if (!kpiTotalReports || !kpiDueInPeriod || !kpiDueToday || !kpiDue3Days || !kpiPastTotal) {
             console.error("updateKPIs: One or more KPI DOM elements are missing!");
+            if(kpiTotalReports) kpiTotalReports.textContent = '-';
+            if(kpiDueInPeriod) kpiDueInPeriod.textContent = '-';
+            if(kpiDueToday) kpiDueToday.textContent = '-';
+            if(kpiDue3Days) kpiDue3Days.textContent = '-';
+            if(kpiPastTotal) kpiPastTotal.textContent = '-';
             return;
         }
-        // ... (rest as before)
         kpiTotalReports.textContent = currentBaseFilteredData ? currentBaseFilteredData.length : '0';
         if (startDateInput && endDateInput && startDateInput.value && endDateInput.value) {
             kpiDueInPeriod.textContent = currentDateRangeFilteredData ? currentDateRangeFilteredData.length : '0';
@@ -222,25 +218,55 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
         if (notificationDot) notificationDot.classList.toggle('hidden', nearNotificationCount === 0);
-        console.log("KPIs updated successfully.");
+        // console.log("KPIs updated successfully.");
     }
 
     function displayPagination(totalRows) { 
-        console.log("displayPagination called. Total rows for pagination:", totalRows);
+        // console.log("displayPagination called. Total rows for pagination:", totalRows);
+        if (!paginationControls) { return; }
         // ... (rest as before)
+        paginationControls.innerHTML = '';
+        const pageCount = Math.ceil(totalRows / rowsPerPage);
+        if (pageCount <= 1) return;
+
+        const prevLi = document.createElement('li');
+        prevLi.innerHTML = `<a href="#" data-page="${currentPage - 1}">&laquo; السابق</a>`;
+        if (currentPage === 1) prevLi.classList.add('disabled');
+        paginationControls.appendChild(prevLi);
+
+        for (let i = 1; i <= pageCount; i++) {
+            const pageLi = document.createElement('li');
+            pageLi.innerHTML = `<a href="#" data-page="${i}">${i}</a>`;
+            if (i === currentPage) pageLi.classList.add('active');
+            paginationControls.appendChild(pageLi);
+        }
+
+        const nextLi = document.createElement('li');
+        nextLi.innerHTML = `<a href="#" data-page="${currentPage + 1}">التالي &raquo;</a>`;
+        if (currentPage === pageCount) nextLi.classList.add('disabled');
+        paginationControls.appendChild(nextLi);
+
+        paginationControls.querySelectorAll('a').forEach(link => {
+            link.onclick = (e) => {
+                e.preventDefault();
+                const parentLi = link.parentElement;
+                if (parentLi.classList.contains('disabled') || parentLi.classList.contains('active')) return;
+                currentPage = parseInt(link.dataset.page);
+                renderCurrentPage();
+            };
+        });
     }
     
     function renderCurrentPage() {
-        console.log("--- renderCurrentPage START --- Current Page:", currentPage);
+        console.log("--- renderCurrentPage --- Called. Current Page:", currentPage);
         if (!allReportsData || !Array.isArray(allReportsData) || allReportsData.length === 0) {
-            console.warn("renderCurrentPage: allReportsData is empty or not an array. Displaying empty table and KPIs.");
+            console.warn("renderCurrentPage: allReportsData is empty or not loaded. Displaying empty table and KPIs.");
             if (tableBody) tableBody.innerHTML = '<tr><td colspan="7">لا توجد بيانات لعرضها.</td></tr>';
             updateKPIs([], []);
             displayPagination(0);
-            console.log("--- renderCurrentPage END (no data) ---");
             return;
         }
-        // ... (rest of function as before, with all its console.logs)
+        
         const searchTerm = searchInput ? searchInput.value.toLowerCase() : "";
         const selectedDept = departmentFilter ? departmentFilter.value : "all";
         const startDateValue = startDateInput ? startDateInput.value : "";
@@ -256,6 +282,7 @@ document.addEventListener('DOMContentLoaded', () => {
             endDate = new Date(endDateValue);
             if (!isNaN(endDate.getTime())) endDate.setHours(23, 59, 59, 999); else endDate = null;
         }
+        // console.log("Filters - Search:", searchTerm, "Dept:", selectedDept, "Start:", startDate, "End:", endDate);
         
         baseFilteredData = allReportsData.filter(report => {
             if (!report || !Array.isArray(report) || report.length < 3) return false;
@@ -282,10 +309,24 @@ document.addEventListener('DOMContentLoaded', () => {
         populateTable(reportsToShow);
         displayPagination(dateRangeFilteredData.length);
         updateKPIs(baseFilteredData, dateRangeFilteredData); 
-        console.log("--- renderCurrentPage END ---");
+        console.log("--- renderCurrentPage --- Finished. Reports shown:", reportsToShow.length);
     }
     
-    function populateFilter(data) { /* ... unchanged ... */ }
+    function populateFilter(data) {
+        console.log("populateFilter: Called. Data length:", data ? data.length : 'undefined');
+        if (!departmentFilter) { console.error("populateFilter: departmentFilter is NULL."); return; }
+        if (!data || !Array.isArray(data)) { console.error("populateFilter: Invalid data."); return;}
+        // ... (rest as before)
+        const departments = [...new Set(data.map(report => report[1]))]; 
+        departments.sort((a, b) => a.localeCompare(b, 'ar')); 
+        departmentFilter.innerHTML = '<option value="all">عرض الكل</option>';
+        departments.forEach(dept => {
+            const option = document.createElement('option');
+            option.value = dept;
+            option.textContent = dept;
+            departmentFilter.appendChild(option);
+        });
+    }
 
     async function fetchData() {
         console.log("fetchData: Initiating...");
@@ -300,12 +341,12 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             allReportsData = await response.json();
             console.log("fetchData: Data parsed successfully. Type:", typeof allReportsData, "Is Array:", Array.isArray(allReportsData), "Length:", allReportsData ? allReportsData.length : 'N/A'); 
-            // console.log("Sample data:", JSON.stringify(allReportsData.slice(0,2))); // Log sample data
+            // console.log("Sample data:", JSON.stringify(allReportsData.slice(0,2)));
             
             if (Array.isArray(allReportsData) && allReportsData.length > 0) {
                 console.log("fetchData: Data is valid. Populating filter and rendering initial page.");
-                if(departmentFilter) { populateFilter(allReportsData); } else { console.error("fetchData: departmentFilter element is NULL."); }
-                renderCurrentPage(); 
+                if(departmentFilter) { populateFilter(allReportsData); } else { console.error("fetchData: departmentFilter is NULL."); }
+                renderCurrentPage(); // <<--- THIS IS THE CRITICAL CALL
                 console.log("fetchData: Initial page render process complete.");
             } else {
                 console.warn("fetchData: Data is empty or not an array after parsing.");
@@ -320,7 +361,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function handleFilterAndSearch() {
-        console.log("handleFilterAndSearch: Called by user interaction.");
+        console.log("handleFilterAndSearch: User interaction triggered filter/search.");
         currentPage = 1; 
         renderCurrentPage();
     }
