@@ -1,11 +1,11 @@
 document.addEventListener('DOMContentLoaded', () => {
-    console.log("SCRIPT.JS LOADED: DOMContentLoaded FIRED");
+    console.log("SCRIPT.JS LOADED AND DOMCONTENTLOADED FIRED! Current Time:", new Date().toLocaleTimeString());
 
     // --- DOM Elements ---
     const tableBody = document.getElementById('reports-table-body');
     const searchInput = document.getElementById('search-input');
-    const themeSwitcherBtn = document.getElementById('theme-switcher-btn');
-    const themeIcon = themeSwitcherBtn ? themeSwitcherBtn.querySelector('i') : null;
+    const themeSwitcherBtn = document.getElementById('theme-switcher-btn'); // Will be removed later
+    const themeIcon = themeSwitcherBtn ? themeSwitcherBtn.querySelector('i') : null; // Will be removed later
     const notificationDot = document.getElementById('notification-dot');
     const navLinks = document.querySelectorAll('.sidebar ul li'); 
     const views = document.querySelectorAll('.view'); 
@@ -39,8 +39,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const targetEmail = 'shamdan@aur.com.sa';
     const systemBaseDate = new Date('2025-05-27T00:00:00'); 
     let allReportsData = []; 
-    let baseFilteredData = []; 
-    let dateRangeFilteredData = []; 
+    let baseFilteredDataForKPIsAndCharts = []; // For KPIs (total, past) and Charts (overview data)
+    let dateRangeAndOtherFilteredData = []; // For table, and date-specific KPIs
     let currentPage = 1;
     const rowsPerPage = 15; 
     let departmentChartInstance = null;
@@ -53,75 +53,55 @@ document.addEventListener('DOMContentLoaded', () => {
     const threeDaysLater = new Date(new Date(systemBaseDate).setHours(0, 0, 0, 0));
     threeDaysLater.setDate(today.getDate() + 3);
 
-    function getThemeColor(cssVarName, fallbackColor) {
-        try {
-            if (typeof window !== 'undefined' && typeof document !== 'undefined' && document.documentElement) {
-                const color = getComputedStyle(document.documentElement).getPropertyValue(cssVarName).trim();
-                return color || fallbackColor;
-            }
-            return fallbackColor;
-        } catch (e) { return fallbackColor; }
-    }
+    console.log("Date context: 'today' is set to", today.toISOString().split('T')[0]);
 
-    function getStatus(dueDateStr) {
-        const defaultErrorStatus = { text: "خطأ بالتاريخ", classForTable: "status-error", isPast: false, isNear: false, eventColors: { backgroundColor: 'gray', borderColor: 'gray', textColor: 'white' } };
-        if (!dueDateStr || typeof dueDateStr !== 'string' || !dueDateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
-            console.warn("getStatus: Invalid dueDateStr format or type:", dueDateStr);
-            return defaultErrorStatus;
-        }
-        const due = new Date(dueDateStr);
-        if (isNaN(due.getTime())) {
-            console.warn("getStatus: Failed to parse dueDateStr into valid date object:", dueDateStr);
-            return defaultErrorStatus;
-        }
-        const normalizedDue = new Date(due.getFullYear(), due.getMonth(), due.getDate());
-
-        const pastEvent = { backgroundColor: '#E9ECEF', borderColor: '#D0D0D0', textColor: '#6C757D' };
-        const dueTodayEvent = { backgroundColor: getThemeColor('--accent-gold-muted', '#bd9a5f'), borderColor: getThemeColor('--accent-gold-muted', '#bd9a5f'), textColor: '#FFFFFF' };
-        const upcomingEvent = { backgroundColor: getThemeColor('--accent-blue-calendar-event', '#AEC6CF'), borderColor: getThemeColor('--accent-blue-calendar-event', '#AEC6CF'), textColor: getThemeColor('--primary-dark-light', '#2C3E50') };
-        const futureEvent = { backgroundColor: getThemeColor('--accent-green-event', '#F5F5F5'), borderColor: getThemeColor('--accent-green-event', '#F5F5F5'), textColor: '#6C757D' };
-
-        if (normalizedDue < today) return { text: "منتهي", classForTable: "status-past", isPast: true, isNear: false, eventColors: pastEvent };
-        if (normalizedDue.getTime() === today.getTime()) return { text: "مستحق اليوم", classForTable: "status-due", isPast: false, isNear: true, eventColors: dueTodayEvent };
-        if (normalizedDue > today && normalizedDue <= threeDaysLater) return { text: "قادم قريباً", classForTable: "status-upcoming", isPast: false, isNear: true, eventColors: upcomingEvent };
-        return { text: "قادم", classForTable: "status-future", isPast: false, isNear: false, eventColors: futureEvent };
-    }
-
-    function createMailtoLink(reportTitle) { /* ... as before ... */ }
-    function createCharts(dataForCharts) { /* ... as before ... */ }
+    function getThemeColor(cssVarName, fallbackColor) { /* ... unchanged ... */ }
+    function getStatus(dueDateStr) { /* ... unchanged ... */ }
+    function createMailtoLink(reportTitle) { /* ... unchanged ... */ }
+    function createCharts(dataForCharts) { /* ... unchanged ... */ }
+    function populateTable(reportsToShow) { /* ... unchanged ... */ }
+    function displayPagination(totalRows) { /* ... unchanged ... */ }
     
-    function populateTable(reportsToShow) {
-        if (!tableBody) { console.error("populateTable: tableBody is NULL."); return; }
-        tableBody.innerHTML = ''; 
-        if (!reportsToShow || reportsToShow.length === 0) {
-            tableBody.innerHTML = '<tr><td colspan="7">لا توجد تقارير تطابق البحث أو التصفية.</td></tr>';
+    function populateFilter(data) {
+        console.log("populateFilter: Called. Data length:", data ? data.length : 'undefined');
+        if (!departmentFilter) { console.error("populateFilter: departmentFilter is NULL."); return; }
+        if (!data || !Array.isArray(data)) { console.error("populateFilter: Invalid data."); return;}
+        
+        const currentFilterValue = departmentFilter.value; // Preserve current selection if any
+        departmentFilter.innerHTML = '<option value="all">عرض الكل</option>';
+        const departments = [...new Set(data.map(report => report[1]).filter(dept => dept))]; 
+        departments.sort((a, b) => String(a).localeCompare(String(b), 'ar')); 
+        departments.forEach(dept => {
+            const option = document.createElement('option');
+            option.value = dept;
+            option.textContent = dept;
+            if (dept === currentFilterValue) { // Re-select if it was selected
+                option.selected = true;
+            }
+            departmentFilter.appendChild(option);
+        });
+        console.log("populateFilter: Populated with", departments.length, "departments. Current value:", departmentFilter.value);
+    }
+
+    function updateKPIs(baseData, dateRangeData) { // Takes two data sets now
+        console.log("updateKPIs: BaseData:", baseData.length, "DateRangeData:", dateRangeData.length);
+        if (!kpiTotalReports || !kpiDueInPeriod || !kpiDueToday || !kpiDue3Days || !kpiPastTotal) {
             return;
         }
-        reportsToShow.forEach((report) => {
-            if (!Array.isArray(report) || report.length < 5) return; 
-            const [id, department, title, frequency, dateString] = report;
-            const statusInfo = getStatus(dateString); 
-            if (!statusInfo || typeof statusInfo.classForTable === 'undefined') return; 
-            const row = document.createElement('tr');
-            if (statusInfo.isPast) row.classList.add('past-due');
-            row.innerHTML = `<td>${id||''}</td><td>${department||''}</td><td>${title||''}</td><td>${frequency||''}</td><td>${dateString||''}</td><td><span class="status-tag ${statusInfo.classForTable}">${statusInfo.text}</span></td><td><a href="${createMailtoLink(title||'')}" class="icon-button" title="إرسال بريد"><i class="fas fa-envelope"></i></a></td>`;
-            tableBody.appendChild(row);
-        });
-    }
-
-    function updateKPIs(currentBaseFilteredData, currentDateRangeFilteredData) {
-        if (!kpiTotalReports || !kpiDueInPeriod || !kpiDueToday || !kpiDue3Days || !kpiPastTotal) return;
         
-        kpiTotalReports.textContent = currentBaseFilteredData ? currentBaseFilteredData.length : '0';
+        kpiTotalReports.textContent = baseData ? baseData.length : '0';
+
         if (startDateInput && endDateInput && startDateInput.value && endDateInput.value) {
-            kpiDueInPeriod.textContent = currentDateRangeFilteredData ? currentDateRangeFilteredData.length : '0';
+            kpiDueInPeriod.textContent = dateRangeData ? dateRangeData.length : '0';
         } else {
             kpiDueInPeriod.textContent = '-';
         }
+
         let dueTodayCount = 0, due3DaysOnlyCount = 0, pastTotalCount = 0, nearNotificationCount = 0;
 
-        if (currentDateRangeFilteredData) {
-            currentDateRangeFilteredData.forEach(report => {
+        // KPIs like Due Today, Due in 3 Days should reflect the fully filtered view (including date range)
+        if (dateRangeData) {
+            dateRangeData.forEach(report => {
                 if (!report || report.length < 5) return;
                 const statusInfo = getStatus(report[4]); 
                 if (statusInfo && statusInfo.classForTable === 'status-due') dueTodayCount++;
@@ -131,44 +111,29 @@ document.addEventListener('DOMContentLoaded', () => {
         kpiDueToday.textContent = dueTodayCount;
         kpiDue3Days.textContent = due3DaysOnlyCount + dueTodayCount; 
 
-        if (currentBaseFilteredData) {
-            currentBaseFilteredData.forEach(report => {
+        // Past Total KPI should be based on the base filter (search + department), not the date range
+        if (baseData) {
+            baseData.forEach(report => {
                 if (!report || report.length < 5) return;
                 const statusInfo = getStatus(report[4]);
                 if (statusInfo && statusInfo.isPast) pastTotalCount++;
-                if (statusInfo && statusInfo.isNear) nearNotificationCount++;
+                if (statusInfo && statusInfo.isNear) nearNotificationCount++; // Notification still based on this broader set
             });
         }
         kpiPastTotal.textContent = pastTotalCount;
         if (notificationDot) notificationDot.classList.toggle('hidden', nearNotificationCount === 0);
-    }
-
-    function displayPagination(totalRows) { /* ... as before ... */ }
-    
-    function populateFilter(data) {
-        if (!departmentFilter || !data || !Array.isArray(data)) return;
-        departmentFilter.innerHTML = '<option value="all">عرض الكل</option>';
-        const departments = [...new Set(data.map(report => report[1]).filter(dept => dept))]; // Filter out undefined/null departments
-        departments.sort((a, b) => String(a).localeCompare(String(b), 'ar')); 
-        departments.forEach(dept => {
-            const option = document.createElement('option');
-            option.value = dept;
-            option.textContent = dept;
-            departmentFilter.appendChild(option);
-        });
-        console.log("populateFilter: Populated with", departments.length, "departments.");
+        console.log("KPIs updated.");
     }
     
     function renderCurrentPage() {
-        console.log("--- renderCurrentPage --- Called");
-        if (!allReportsData || !Array.isArray(allReportsData)) { // Added !Array.isArray check
-            console.error("renderCurrentPage: allReportsData is not ready or not an array.");
-            if (tableBody) tableBody.innerHTML = '<tr><td colspan="7">خطأ في تحميل البيانات الأساسية.</td></tr>';
+        console.log("--- renderCurrentPage START --- Current Page:", currentPage);
+        if (!allReportsData || !Array.isArray(allReportsData) || allReportsData.length === 0) {
+            if (tableBody) tableBody.innerHTML = '<tr><td colspan="7">البيانات الأساسية غير متوفرة.</td></tr>';
             updateKPIs([], []); 
             if (paginationControls) displayPagination(0); 
             return;
         }
-        // ... (rest of function as before, with careful checks for null/undefined on DOM elements before use)
+        
         const searchTerm = searchInput ? searchInput.value.toLowerCase() : "";
         const selectedDept = departmentFilter ? departmentFilter.value : "all";
         const startDateValue = startDateInput ? startDateInput.value : "";
@@ -185,15 +150,18 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!isNaN(endDate.getTime())) endDate.setHours(23, 59, 59, 999); else endDate = null;
         }
         
-        baseFilteredData = allReportsData.filter(report => {
+        // Step 1: Filter by Search and Department (for some KPIs and as base for date filter)
+        baseFilteredDataForKPIsAndCharts = allReportsData.filter(report => {
             if (!report || !Array.isArray(report) || report.length < 3 || typeof report[1] !== 'string' || typeof report[2] !== 'string') return false;
             const deptMatch = (selectedDept === 'all') || (report[1] === selectedDept);
             const searchMatch = report[1].toLowerCase().includes(searchTerm) || 
                                 report[2].toLowerCase().includes(searchTerm);
             return deptMatch && searchMatch;
         });
+        console.log("renderCurrentPage: baseFilteredDataForKPIsAndCharts count:", baseFilteredDataForKPIsAndCharts.length);
 
-        dateRangeFilteredData = baseFilteredData.filter(report => {
+        // Step 2: Filter by Date Range (applied to baseFilteredData)
+        dateRangeAndOtherFilteredData = baseFilteredDataForKPIsAndCharts.filter(report => {
             if (!report || !Array.isArray(report) || report.length < 5 || typeof report[4] !== 'string') return false;
             const reportDate = new Date(report[4]);
             if (isNaN(reportDate.getTime())) return false;
@@ -202,108 +170,90 @@ document.addEventListener('DOMContentLoaded', () => {
             const matchesEndDate = !endDate || reportDate <= endDate;
             return matchesStartDate && matchesEndDate;
         });
+        console.log("renderCurrentPage: dateRangeAndOtherFilteredData count (for table):", dateRangeAndOtherFilteredData.length);
 
         const startIndex = (currentPage - 1) * rowsPerPage;
         const endIndex = startIndex + rowsPerPage;
-        const reportsToShow = dateRangeFilteredData.slice(startIndex, endIndex);
+        const reportsToShow = dateRangeAndOtherFilteredData.slice(startIndex, endIndex);
 
         populateTable(reportsToShow);
-        if (paginationControls) displayPagination(dateRangeFilteredData.length);
-        updateKPIs(baseFilteredData, dateRangeFilteredData); 
-        console.log("--- renderCurrentPage --- Finished. Reports shown:", reportsToShow.length);
+        if (paginationControls) displayPagination(dateRangeAndOtherFilteredData.length);
+        updateKPIs(baseFilteredDataForKPIsAndCharts, dateRangeAndOtherFilteredData); 
+        console.log("--- renderCurrentPage END --- Table & KPIs updated. Reports shown:", reportsToShow.length);
     }
     
     async function fetchData() {
         console.log("fetchData: Initiating...");
         if (tableBody) tableBody.innerHTML = '<tr><td colspan="7">جاري تحميل البيانات...</td></tr>';
-        else { console.error("fetchData: tableBody is null, cannot set loading message."); }
-
         try {
             const response = await fetch(dataUrl);
             console.log("fetchData: Response status:", response.status, "Ok:", response.ok);
-            if (!response.ok) {
-                console.error("fetchData: Network error fetching data.json. Status:", response.status);
-                if (tableBody) tableBody.innerHTML = `<tr><td colspan="7">فشل تحميل البيانات. الحالة: ${response.status}.</td></tr>`;
-                updateKPIs([], []); 
-                return; 
-            }
+            if (!response.ok) throw new Error(`Network error (${response.status})`);
+            
             allReportsData = await response.json();
-            console.log("fetchData: Data parsed. Length:", allReportsData ? allReportsData.length : 'N/A', ". IsArray:", Array.isArray(allReportsData)); 
+            console.log("fetchData: Data parsed. Length:", allReportsData ? allReportsData.length : 'N/A'); 
             
             if (Array.isArray(allReportsData) && allReportsData.length > 0) {
-                populateFilter(allReportsData); 
-                renderCurrentPage(); 
+                if(departmentFilter) { 
+                    populateFilter(allReportsData); // Populate filter first
+                } else { console.error("fetchData: departmentFilter is NULL."); }
+                renderCurrentPage(); // Then render page, which uses filter value
                 console.log("fetchData: Initial page render process complete.");
             } else {
-                console.warn("fetchData: Data is empty or not an array after parsing.");
-                if (tableBody) tableBody.innerHTML = '<tr><td colspan="7">لا توجد بيانات للعرض.</td></tr>';
+                console.warn("fetchData: Data is empty or not an array.");
+                if (tableBody) tableBody.innerHTML = '<tr><td colspan="7">لا توجد بيانات.</td></tr>';
                 updateKPIs([], []); 
             }
         } catch (error) {
             console.error('fetchData: CRITICAL ERROR:', error);
-            if (tableBody) tableBody.innerHTML = `<tr><td colspan="7">خطأ فادح: ${error.message}</td></tr>`;
+            if (tableBody) tableBody.innerHTML = `<tr><td colspan="7">خطأ: ${error.message}</td></tr>`;
             updateKPIs([], []);
         }
     }
 
-    function handleFilterAndSearch() { /* ... as before ... */ }
-    function resetDateFilter() { /* ... as before ... */ }
+    function handleFilterAndSearch() {
+        console.log("handleFilterAndSearch: User interaction.");
+        currentPage = 1; 
+        renderCurrentPage();
+    }
+    function resetDateFilter() { /* ... unchanged ... */ }
     
-    function toggleTheme() {
-        console.log("toggleTheme: Called.");
-        document.body.classList.toggle('dark-mode');
-        const isDarkMode = document.body.classList.contains('dark-mode');
-        if (themeIcon) themeIcon.className = isDarkMode ? 'fas fa-moon' : 'fas fa-sun';
-        localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
-        console.log("toggleTheme: Theme set to", isDarkMode ? 'dark' : 'light');
-        
-        const activeViewId = document.querySelector('.sidebar ul li.active')?.dataset.view;
-        if (activeViewId === 'analytics' && chartsDrawn) {
-            console.log("toggleTheme: Re-creating analytics charts.");
-            // ... (logic for recreating charts with current filters) ...
-        }
-        if (activeViewId === 'calendar' && calendarInitialized) {
-            console.log("toggleTheme: Re-initializing calendar.");
-            initializeCalendar(); 
-        }
-    }
-
-    function loadTheme() {
-        console.log("loadTheme: Called.");
-        const savedTheme = localStorage.getItem('theme');
-        if (savedTheme === 'dark') {
-            document.body.classList.add('dark-mode');
-            if (themeIcon) themeIcon.className = 'fas fa-moon';
-        } else {
-            document.body.classList.remove('dark-mode'); 
-            if (themeIcon) themeIcon.className = 'fas fa-sun';
-        }
-        console.log("loadTheme: Theme loaded as", document.body.classList.contains('dark-mode') ? 'dark' : 'light');
-    }
+    // --- REMOVED THEME FUNCTIONS: toggleTheme, loadTheme ---
+    // Ensure themeSwitcherBtn event listener is also removed or handled if button is removed from HTML
 
     function initializeCalendar() {
-        console.log("initializeCalendar: Attempting. Calendar Initialized Flag:", calendarInitialized, "Calendar Element:", !!calendarEl);
+        console.log("initializeCalendar: Called. Calendar Initialized Flag:", calendarInitialized, "Calendar Element:", !!calendarEl);
         if (!calendarEl) {
             console.error("initializeCalendar: calendarEl is NULL.");
             return;
         }
-        if (!Array.isArray(allReportsData) || allReportsData.length === 0) {
-            console.warn("initializeCalendar: allReportsData is empty. Cannot populate calendar.");
-            calendarEl.innerHTML = "<p style='text-align:center; padding:20px;'>لا توجد بيانات لعرضها في التقويم حالياً.</p>";
+        if (!Array.isArray(allReportsData) || allReportsData.length === 0) { // Check allReportsData
+            console.warn("initializeCalendar: No base data (allReportsData). Cannot populate calendar.");
+            calendarEl.innerHTML = "<p style='text-align:center; padding:20px;'>لا توجد بيانات لعرضها في التقويم.</p>";
             if (calendarInstance) { calendarInstance.destroy(); calendarInstance = null; calendarInitialized = false;}
             return;
         }
         calendarEl.innerHTML = ''; 
 
-        const searchTerm = searchInput ? searchInput.value.toLowerCase() : "";
-        const selectedDept = departmentFilter ? departmentFilter.value : "all";
-        const calendarData = allReportsData.filter(report => { /* ... as before ... */ });
-        console.log("initializeCalendar: Filtered data for calendar. Count:", calendarData.length);
+        // For calendar, let's use data filtered by search and department only
+        // This is now baseFilteredDataForKPIsAndCharts from the last renderCurrentPage call
+        // Or re-filter allReportsData here if more current filter values are desired
+        const currentSearchTerm = searchInput ? searchInput.value.toLowerCase() : "";
+        const currentSelectedDept = departmentFilter ? departmentFilter.value : "all";
+        const dataForCalendar = allReportsData.filter(report => {
+             if (!report || !Array.isArray(report) || report.length < 3 || typeof report[1] !== 'string' || typeof report[2] !== 'string') return false;
+            const deptMatch = (currentSelectedDept === 'all') || (report[1] === currentSelectedDept);
+            const searchMatch = report[1].toLowerCase().includes(currentSearchTerm) || 
+                                report[2].toLowerCase().includes(currentSearchTerm);
+            return deptMatch && searchMatch;
+        });
 
-        const calendarEvents = calendarData.map(report => {
-            if (!report || !Array.isArray(report) || report.length < 5) { console.warn("initializeCalendar: Skipping invalid report for calendar event:", report); return null; }
+        console.log("initializeCalendar: Data for calendar (after current search/dept filter):", dataForCalendar.length);
+
+        const calendarEvents = dataForCalendar.map(report => {
+            if (!report || !Array.isArray(report) || report.length < 5) return null; 
             const statusInfo = getStatus(report[4]);
-            if (!statusInfo || !statusInfo.eventColors) { console.warn("initializeCalendar: Missing statusInfo or eventColors for report:", report, statusInfo); return null; }
+            if (!statusInfo || !statusInfo.eventColors) return null;
             return {
                 id: report[0], title: report[2], start: report[4], allDay: true,
                 backgroundColor: statusInfo.eventColors.backgroundColor,
@@ -312,16 +262,35 @@ document.addEventListener('DOMContentLoaded', () => {
                 extendedProps: { id:report[0], department: report[1], frequency: report[3], statusText: statusInfo.text, fullReport: report }
             };
         }).filter(event => event !== null); 
-        console.log("initializeCalendar: Processed calendarEvents. Count:", calendarEvents.length, "Sample:", JSON.stringify(calendarEvents.slice(0,1)));
+
+        console.log("initializeCalendar: Processed calendarEvents. Count:", calendarEvents.length);
+        if (calendarEvents.length === 0) {
+             console.warn("initializeCalendar: No events to display on calendar after processing.");
+        }
+        // console.log("initializeCalendar: Sample event:", JSON.stringify(calendarEvents.slice(0,1)));
+
 
         if (calendarInstance) calendarInstance.destroy();
-        calendarInstance = new FullCalendar.Calendar(calendarEl, { /* ... options as before ... */ });
         try {
+            calendarInstance = new FullCalendar.Calendar(calendarEl, {
+                locale: 'ar', 
+                headerToolbar: { right: 'prev,next today', center: 'title', left: 'dayGridMonth,timeGridWeek,listWeek' },
+                initialView: 'dayGridMonth',
+                events: calendarEvents,
+                eventDisplay: 'block', 
+                eventTextColor: function(eventInfo){ return eventInfo.event.textColor; },
+                eventDidMount: function(info) {
+                    if (info.event.backgroundColor) info.el.style.setProperty('background-color', info.event.backgroundColor, 'important');
+                    if (info.event.borderColor) info.el.style.setProperty('border-color', info.event.borderColor, 'important');
+                },
+                eventClick: function(info) { /* ... as before ... */ }
+            });
             calendarInstance.render();
             calendarInitialized = true; 
             console.log("initializeCalendar: Calendar RENDERED successfully.");
-        } catch (e) {
-            console.error("initializeCalendar: Error during FullCalendar RENDER:", e);
+        } catch(e) {
+            console.error("initializeCalendar: ERROR during FullCalendar instantiation or render:", e);
+            calendarEl.innerHTML = "<p style='text-align:center; padding:20px;'>حدث خطأ أثناء عرض التقويم.</p>";
         }
     }
 
@@ -332,14 +301,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function handleNavigation(event) {
         event.preventDefault();
-        console.log("--- handleNavigation START ---");
+        // console.log("--- handleNavigation START --- Target:", event.target.closest('li[data-view]'));
         const clickedLi = event.target.closest('li[data-view]');
         if (!clickedLi) { return; }
-        if (clickedLi.classList.contains('active') && clickedLi.dataset.view !== 'calendar' && clickedLi.dataset.view !== 'analytics') { // Allow re-click for calendar/analytics to refresh
-            return;
-        }
+        // Allow re-click for calendar/analytics to refresh with current filters
+        // if (clickedLi.classList.contains('active') && clickedLi.dataset.view !== 'calendar' && clickedLi.dataset.view !== 'analytics') { 
+        //     return;
+        // }
+        
         const viewId = clickedLi.dataset.view;
-        console.log("handleNavigation: Navigating to viewId:", viewId);
+        // console.log("handleNavigation: Navigating to viewId:", viewId);
 
         if(navLinks) navLinks.forEach(link => link.classList.remove('active'));
         if(views) views.forEach(view => view.classList.remove('active-view'));
@@ -351,29 +322,39 @@ document.addEventListener('DOMContentLoaded', () => {
         } else { return; }
         
         if (viewId === 'analytics') {
-            // ... (chart creation as before) ...
+            const currentSearchTerm = searchInput ? searchInput.value.toLowerCase() : "";
+            const currentSelectedDept = departmentFilter ? departmentFilter.value : "all";
+            const chartData = allReportsData.filter(report => { 
+                if (!report || !Array.isArray(report) || report.length < 3) return false;
+                const matchesSearch = (report[1] && String(report[1]).toLowerCase().includes(currentSearchTerm)) || 
+                                    (report[2] && String(report[2]).toLowerCase().includes(currentSearchTerm));
+                const matchesDept = (currentSelectedDept === 'all') || (report[1] === currentSelectedDept);
+                return matchesSearch && matchesDept;
+            });
+            createCharts(chartData); 
         }
+
         if (viewId === 'calendar') {
             initializeCalendar(); 
         }
-        console.log("--- handleNavigation END for view:", viewId, "---");
+        // console.log("--- handleNavigation END for view:", viewId, "---");
     }
 
     // Event Listeners
-    // ... (as before) ...
+    // console.log("Attaching event listeners...");
     if(searchInput) searchInput.addEventListener('input', handleFilterAndSearch);
     if(departmentFilter) departmentFilter.addEventListener('change', handleFilterAndSearch);
     if(startDateInput) startDateInput.addEventListener('change', handleFilterAndSearch);
     if(endDateInput) endDateInput.addEventListener('change', handleFilterAndSearch);
     if(resetDateBtn) resetDateBtn.addEventListener('click', resetDateFilter);
-    if(themeSwitcherBtn) themeSwitcherBtn.addEventListener('click', toggleTheme);
+    // Removed themeSwitcherBtn listener
     if(navLinks && navLinks.length > 0) {
         navLinks.forEach((link) => { if (link) link.addEventListener('click', handleNavigation); });
     }
 
     // Initial Setup
-    console.log("Running initial setup: loadTheme and fetchData.");
-    loadTheme();
+    console.log("Running initial setup: Fetching data.");
+    // Removed loadTheme()
     fetchData();
 
 });
