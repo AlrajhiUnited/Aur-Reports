@@ -115,7 +115,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const deptCounts = dataForCharts.reduce((acc, report) => { acc[report[1]] = (acc[report[1]] || 0) + 1; return acc; }, {});
         const freqCounts = dataForCharts.reduce((acc, report) => { acc[report[3]] = (acc[report[3]] || 0) + 1; return acc; }, {});
         const goldColor = getThemeColor('--accent-gold', '#C89638'); 
-        const blueColorOriginal = getThemeColor('--accent-blue', '#3498DB'); // Use the original blue for pie
+        const blueColorOriginal = getThemeColor('--accent-blue', '#3498DB'); 
         const primaryDarkColor = getThemeColor('--primary-dark-light', '#2C3E50');
         const mutedGoldColor = getThemeColor('--accent-gold-muted', '#bd9a5f');
         const greyColor = getThemeColor('--past-due-color', '#95A5A6');
@@ -149,7 +149,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const [id, department, title, frequency, dateString] = report;
             const statusInfo = getStatus(dateString); 
             
-            if (!statusInfo || typeof statusInfo.classForTable === 'undefined') { // Check classForTable as it's used
+            if (!statusInfo || typeof statusInfo.classForTable === 'undefined') { 
                 console.error(`populateTable: Invalid statusInfo for report ID ${id}. statusInfo:`, statusInfo, "dateString:", dateString);
                 return; 
             }
@@ -224,7 +224,6 @@ document.addEventListener('DOMContentLoaded', () => {
     function displayPagination(totalRows) { 
         // console.log("displayPagination called. Total rows for pagination:", totalRows);
         if (!paginationControls) { return; }
-        // ... (rest as before)
         paginationControls.innerHTML = '';
         const pageCount = Math.ceil(totalRows / rowsPerPage);
         if (pageCount <= 1) return;
@@ -263,7 +262,7 @@ document.addEventListener('DOMContentLoaded', () => {
             console.warn("renderCurrentPage: allReportsData is empty or not loaded. Displaying empty table and KPIs.");
             if (tableBody) tableBody.innerHTML = '<tr><td colspan="7">لا توجد بيانات لعرضها.</td></tr>';
             updateKPIs([], []);
-            displayPagination(0);
+            if (paginationControls) displayPagination(0);
             return;
         }
         
@@ -282,13 +281,12 @@ document.addEventListener('DOMContentLoaded', () => {
             endDate = new Date(endDateValue);
             if (!isNaN(endDate.getTime())) endDate.setHours(23, 59, 59, 999); else endDate = null;
         }
-        // console.log("Filters - Search:", searchTerm, "Dept:", selectedDept, "Start:", startDate, "End:", endDate);
         
         baseFilteredData = allReportsData.filter(report => {
             if (!report || !Array.isArray(report) || report.length < 3) return false;
             const deptMatch = (selectedDept === 'all') || (report[1] === selectedDept);
-            const searchMatch = report[1].toLowerCase().includes(searchTerm) || 
-                                report[2].toLowerCase().includes(searchTerm);
+            const searchMatch = (report[1] && report[1].toLowerCase().includes(searchTerm)) || 
+                                (report[2] && report[2].toLowerCase().includes(searchTerm));
             return deptMatch && searchMatch;
         });
 
@@ -307,7 +305,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const reportsToShow = dateRangeFilteredData.slice(startIndex, endIndex);
 
         populateTable(reportsToShow);
-        displayPagination(dateRangeFilteredData.length);
+        if (paginationControls) displayPagination(dateRangeFilteredData.length); else console.warn("renderCurrentPage: paginationControls is null");
         updateKPIs(baseFilteredData, dateRangeFilteredData); 
         console.log("--- renderCurrentPage --- Finished. Reports shown:", reportsToShow.length);
     }
@@ -316,10 +314,9 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log("populateFilter: Called. Data length:", data ? data.length : 'undefined');
         if (!departmentFilter) { console.error("populateFilter: departmentFilter is NULL."); return; }
         if (!data || !Array.isArray(data)) { console.error("populateFilter: Invalid data."); return;}
-        // ... (rest as before)
+        departmentFilter.innerHTML = '<option value="all">عرض الكل</option>';
         const departments = [...new Set(data.map(report => report[1]))]; 
         departments.sort((a, b) => a.localeCompare(b, 'ar')); 
-        departmentFilter.innerHTML = '<option value="all">عرض الكل</option>';
         departments.forEach(dept => {
             const option = document.createElement('option');
             option.value = dept;
@@ -341,16 +338,15 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             allReportsData = await response.json();
             console.log("fetchData: Data parsed successfully. Type:", typeof allReportsData, "Is Array:", Array.isArray(allReportsData), "Length:", allReportsData ? allReportsData.length : 'N/A'); 
-            // console.log("Sample data:", JSON.stringify(allReportsData.slice(0,2)));
             
             if (Array.isArray(allReportsData) && allReportsData.length > 0) {
                 console.log("fetchData: Data is valid. Populating filter and rendering initial page.");
                 if(departmentFilter) { populateFilter(allReportsData); } else { console.error("fetchData: departmentFilter is NULL."); }
-                renderCurrentPage(); // <<--- THIS IS THE CRITICAL CALL
+                renderCurrentPage(); 
                 console.log("fetchData: Initial page render process complete.");
             } else {
                 console.warn("fetchData: Data is empty or not an array after parsing.");
-                if (tableBody) tableBody.innerHTML = '<tr><td colspan="7">لا توجد بيانات لعرضها (البيانات فارغة).</td></tr>';
+                if (tableBody) tableBody.innerHTML = '<tr><td colspan="7">لا توجد بيانات لعرضها (البيانات فارغة أو غير صحيحة).</td></tr>';
                 updateKPIs([], []); 
             }
         } catch (error) {
@@ -366,12 +362,114 @@ document.addEventListener('DOMContentLoaded', () => {
         renderCurrentPage();
     }
     function resetDateFilter() { /* ... unchanged ... */ }
-    function toggleTheme() { /* ... unchanged ... */ }
-    function loadTheme() { /* ... unchanged ... */ }
-    function initializeCalendar() { /* ... unchanged with its console.logs ... */ }
+    
+    function toggleTheme() {
+        console.log("toggleTheme: Called.");
+        document.body.classList.toggle('dark-mode');
+        const isDarkMode = document.body.classList.contains('dark-mode');
+        if (themeIcon) themeIcon.className = isDarkMode ? 'fas fa-moon' : 'fas fa-sun';
+        localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
+        console.log("toggleTheme: Theme set to", isDarkMode ? 'dark' : 'light');
+        
+        const activeViewId = document.querySelector('.sidebar ul li.active')?.dataset.view;
+        if (activeViewId === 'analytics' && chartsDrawn) {
+            console.log("toggleTheme: Re-creating charts for new theme.");
+            const currentSearchTerm = searchInput ? searchInput.value.toLowerCase() : "";
+            const currentSelectedDept = departmentFilter ? departmentFilter.value : "all";
+            const chartData = allReportsData.filter(report => { 
+                if (!report || !Array.isArray(report) || report.length < 3) return false;
+                const matchesSearch = (report[1] && report[1].toLowerCase().includes(currentSearchTerm)) || 
+                                    (report[2] && report[2].toLowerCase().includes(currentSearchTerm));
+                const matchesDept = (currentSelectedDept === 'all') || (report[1] === currentSelectedDept);
+                return matchesSearch && matchesDept;
+            });
+            createCharts(chartData);
+        }
+        if (activeViewId === 'calendar' && calendarInitialized) {
+            console.log("toggleTheme: Re-initializing calendar for new theme.");
+            initializeCalendar(); 
+        }
+    }
+
+    function loadTheme() {
+        console.log("loadTheme: Called.");
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme === 'dark') {
+            document.body.classList.add('dark-mode');
+            if (themeIcon) themeIcon.className = 'fas fa-moon';
+            console.log("loadTheme: Dark theme loaded.");
+        } else {
+            document.body.classList.remove('dark-mode');
+            if (themeIcon) themeIcon.className = 'fas fa-sun';
+            console.log("loadTheme: Light theme applied.");
+        }
+    }
+
+    function initializeCalendar() {
+        console.log("initializeCalendar: Called. Initialized previously:", calendarInitialized, "Calendar Element:", !!calendarEl);
+        if (!calendarEl) {
+            console.error("initializeCalendar: Calendar placeholder element not found!");
+            return;
+        }
+
+        const searchTerm = searchInput ? searchInput.value.toLowerCase() : "";
+        const selectedDept = departmentFilter ? departmentFilter.value : "all";
+        const calendarData = allReportsData.filter(report => {
+            if (!report || !Array.isArray(report) || report.length < 3) return false;
+            const matchesSearch = (report[1] && report[1].toLowerCase().includes(searchTerm)) || 
+                                  (report[2] && report[2].toLowerCase().includes(searchTerm));
+            const matchesDept = (selectedDept === 'all') || (report[1] === selectedDept);
+            return matchesSearch && matchesDept;
+        });
+        console.log("initializeCalendar: Data for calendar (after search/dept filter):", calendarData.length, "Sample:", JSON.stringify(calendarData.slice(0,2)));
+
+        const calendarEvents = calendarData.map(report => {
+            if (!report || !Array.isArray(report) || report.length < 5) return null; 
+            const statusInfo = getStatus(report[4]);
+            return {
+                id: report[0], title: report[2], start: report[4], allDay: true,
+                backgroundColor: statusInfo.eventColors.backgroundColor,
+                borderColor: statusInfo.eventColors.borderColor,
+                textColor: statusInfo.eventColors.textColor,
+                extendedProps: { department: report[1], frequency: report[3], statusText: statusInfo.text }
+            };
+        }).filter(event => event !== null); 
+
+        console.log("initializeCalendar: Processed calendarEvents (first 2):", JSON.stringify(calendarEvents.slice(0,2)));
+
+        if (calendarInstance) calendarInstance.destroy();
+
+        calendarInstance = new FullCalendar.Calendar(calendarEl, {
+            locale: 'ar', 
+            headerToolbar: { right: 'prev,next today', center: 'title', left: 'dayGridMonth,timeGridWeek,listWeek' },
+            initialView: 'dayGridMonth',
+            events: calendarEvents,
+            eventDisplay: 'block', 
+            eventTextColor: function(eventInfo){ return eventInfo.event.textColor; },
+            eventDidMount: function(info) {
+                if (info.event.backgroundColor) info.el.style.setProperty('background-color', info.event.backgroundColor, 'important');
+                if (info.event.borderColor) info.el.style.setProperty('border-color', info.event.borderColor, 'important');
+            },
+            eventClick: function(info) {
+                const props = info.event.extendedProps;
+                if (modalTitle) modalTitle.textContent = info.event.title;
+                if (modalDepartment) modalDepartment.textContent = props.department;
+                const eventStartDate = new Date(info.event.startStr);
+                if (modalDate) modalDate.textContent = eventStartDate.toLocaleDateString('ar-SA-u-nu-arab', { year: 'numeric', month: 'long', day: 'numeric' });
+                if (modalFrequency) modalFrequency.textContent = props.frequency;
+                if (modalStatus) modalStatus.textContent = props.statusText; 
+                if (modalEmailLink) modalEmailLink.href = createMailtoLink(info.event.title);
+                if (eventModal) eventModal.style.display = "block";
+            }
+        });
+        calendarInstance.render();
+        calendarInitialized = true; 
+        console.log("initializeCalendar: Calendar rendered/updated.");
+    }
+
     function destroyCalendar() { /* ... unchanged ... */ }
     
-    if(closeModalButton) closeModalButton.onclick = function() { eventModal.style.display = "none"; }
+    if(closeModalButton) closeModalButton.onclick = function() { if(eventModal) eventModal.style.display = "none"; }
     if(eventModal) window.onclick = function(event) { if (eventModal && event.target == eventModal) eventModal.style.display = "none"; }
 
     function handleNavigation(event) {
@@ -410,8 +508,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const currentSelectedDept = departmentFilter ? departmentFilter.value : "all";
             const chartData = allReportsData.filter(report => { 
                 if (!report || !Array.isArray(report) || report.length < 3) return false;
-                const matchesSearch = report[1].toLowerCase().includes(currentSearchTerm) || 
-                                    report[2].toLowerCase().includes(currentSearchTerm);
+                const matchesSearch = (report[1] && report[1].toLowerCase().includes(currentSearchTerm)) || 
+                                    (report[2] && report[2].toLowerCase().includes(currentSearchTerm));
                 const matchesDept = (currentSelectedDept === 'all') || (report[1] === currentSelectedDept);
                 return matchesSearch && matchesDept;
             });
