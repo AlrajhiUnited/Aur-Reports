@@ -11,25 +11,26 @@
     --border-color-light: #E9ECEF; 
     --primary-dark-light: #2C3E50;
     
-    --bg-color-dark: #2A2A2A;
-    --sidebar-bg-dark: #343A40;
-    --topbar-bg-dark: #343A40;
-    --card-bg-dark: #343A40; 
-    --text-color-dark: #E9ECEF;
-    --text-muted-dark: #ADB5BD;
-    --border-color-dark: #495057; 
-    --primary-dark-dark: #455a64; 
+    --bg-color-dark: #1A1A1A; /* Darker background for better contrast */
+    --sidebar-bg-dark: #2C2C2C; /* Slightly lighter than body for separation */
+    --topbar-bg-dark: #2C2C2C; 
+    --card-bg-dark: #2C2C2C; 
+    --text-color-dark: #E0E0E0; /* Lighter text for dark mode */
+    --text-muted-dark: #A0A0A0; /* Muted text for dark mode */
+    --border-color-dark: #444444; 
+    --primary-dark-dark: #757575; 
 
     --accent-gold: #C89638; 
     --accent-gold-muted: #bd9a5f; 
-    --accent-blue: #AEC6CF; 
-    --accent-orange: #E67E22; 
+    --accent-blue: #AEC6CF; /* Calendar Upcoming Event */
+    --accent-orange: #E67E22; /* Table Due Tag */
     --accent-red: #E74C3C;
-    --accent-green: #F5F5F5; 
+    --accent-green-event: #D4EFDF; /* Calendar Future Event Light */
+    --accent-green-event-text: #196F3D;
     --past-due-color: #95A5A6; 
 
-    --calendar-hover-grey-light: #f0f0f0;
-    --calendar-hover-grey-dark: #484848;
+    --calendar-hover-grey-light: rgba(222, 191, 138, 0.15); 
+    --calendar-hover-grey-dark: rgba(189, 154, 95, 0.25); 
     --fc-today-button-bg-light: #D6DBDF;
     --fc-today-button-text-light: var(--primary-dark-light);
     --fc-today-button-hover-bg-light: #AEB6BF;
@@ -38,8 +39,8 @@
     --fc-today-button-text-dark: var(--text-color-dark);
     --fc-today-button-hover-bg-dark: #808B96;
 
-    --table-row-hover-light: rgba(222, 191, 138, 0.2); 
-    --table-row-hover-dark: rgba(189, 154, 95, 0.15);   
+    --table-row-hover-light: rgba(222, 191, 138, 0.15); /* Muted gold for table row hover */
+    --table-row-hover-dark: rgba(189, 154, 95, 0.2);   
 
 
     --sidebar-width: 240px;
@@ -63,13 +64,14 @@ body.dark-mode .sidebar { background-color: var(--sidebar-bg-dark); border-left-
 body.dark-mode .sidebar .sidebar-logo { filter: brightness(0) invert(1); }
 body.dark-mode .sidebar ul li a { color: var(--text-muted-dark); }
 body.dark-mode .sidebar ul li a:hover, body.dark-mode .sidebar ul li.active a { background-color: var(--border-color-dark); color: var(--accent-gold); }
-body.dark-mode .sidebar-filter-section { border-top-color: var(--border-color-dark); color: var(--text-color-dark); }
+body.dark-mode .sidebar-filter-section { border-top-color: var(--border-color-dark); } 
 body.dark-mode .sidebar-filter-section h4 { color: var(--text-color-dark); }
-body.dark-mode .sidebar-filter-section input[type="date"] { background-color: #555; border-color: var(--border-color-dark); color: white; color-scheme: dark; }
-body.dark-mode .sidebar-filter-section button { background-color: var(--text-muted-dark); color: var(--bg-color-dark); }
+body.dark-mode .sidebar-filter-section input[type="date"] { background-color: #404040; border-color: var(--border-color-dark); color: var(--text-color-dark); color-scheme: dark; }
+body.dark-mode .sidebar-filter-section button { background-color: var(--text-muted-dark); color: #111; }
+body.dark-mode .sidebar-filter-section button#reset-date-filter { background-color: var(--accent-gold-muted); color: var(--primary-dark-light); }
 body.dark-mode .top-bar { background-color: var(--topbar-bg-dark); border-bottom-color: var(--border-color-dark); }
 body.dark-mode .page-title { color: var(--text-color-dark); }
-body.dark-mode .search-bar { background-color: #555; border-color: var(--border-color-dark); color: white; }
+body.dark-mode .search-bar { background-color: #404040; border-color: var(--border-color-dark); color: var(--text-color-dark); }
 body.dark-mode .top-bar-actions .icon-button { color: var(--text-muted-dark); }
 body.dark-mode .top-bar-actions .icon-button:hover { color: var(--accent-gold); }
 body.dark-mode .kpi-card { background-color: var(--card-bg-dark); color: var(--text-color-dark); border-color: var(--accent-gold-muted); }
@@ -78,17 +80,19 @@ body.dark-mode .kpi-card p { color: var(--text-color-dark); }
 body.dark-mode .kpi-icon { color: var(--accent-gold); }
 body.dark-mode .table-container, body.dark-mode .chart-container { background-color: var(--card-bg-dark); }
 body.dark-mode th, body.dark-mode td { border-bottom-color: var(--border-color-dark); }
-body.dark-mode thead th { background-color: var(--border-color-dark); color: var(--text-color-dark); }
-body.dark-mode tbody tr:nth-child(even) { background-color: #2c3034; }
+body.dark-mode thead th { background-color: var(--primary-dark-dark); color: var(--text-color-dark); } /* Darker header for table */
+body.dark-mode tbody tr:nth-child(even) { background-color: #252525; } /* Darker even rows */
 body.dark-mode tbody tr:hover { background-color: var(--table-row-hover-dark); } 
-body.dark-mode .past-due td { opacity: 0.6; color: var(--text-muted-dark); } /* Adjusted from 0.5 */
+body.dark-mode .past-due td { opacity: 0.6; color: var(--text-muted-dark); } 
+body.dark-mode .filter-container label { color: var(--text-color-dark); }
 body.dark-mode .filter-container select { 
     background-color: var(--card-bg-dark); 
     border-color: var(--border-color-dark); 
     color: var(--text-color-dark); 
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%23C89638' class='bi bi-chevron-down' viewBox='0 0 16 16'%3E%3Cpath fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3E%3C/svg%3E");
-    border-left-color: var(--accent-gold);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%23bd9a5f' viewBox='0 0 16 16'%3E%3Cpath fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3E%3C/svg%3E"); /* Muted gold arrow for dark */
+    border-left-color: var(--accent-gold-muted);
 }
+body.dark-mode .filter-container select option { background-color: var(--card-bg-dark); color: var(--text-color-dark); }
 body.dark-mode .pagination-container a { background-color: #444; color: var(--text-muted-dark); border-left-color: var(--border-color-dark); } 
 body.dark-mode .pagination-container li:first-child a { border-right-color: var(--border-color-dark); }
 body.dark-mode .pagination-container .active a, body.dark-mode .pagination-container a:hover { background-color: var(--accent-gold); color: white; }
@@ -96,7 +100,8 @@ body.dark-mode .pagination-container li.disabled a { background-color: #3e3e3e; 
 body.dark-mode td .icon-button { color: var(--text-muted-dark); }
 body.dark-mode td .icon-button:hover { color: var(--accent-gold); }
 body.dark-mode .modal-content { background-color: #2c3034; color: var(--text-color-dark); border-top-color: var(--accent-gold); }
-body.dark-mode .modal-button { background-color: var(--accent-gold); color: var(--primary-dark-dark); }
+body.dark-mode .modal-button { background-color: var(--accent-gold); color: white; }
+body.dark-mode .modal-button:hover { background-color: var(--accent-gold-muted); color: var(--text-color-dark); }
 body.dark-mode .modal-content h3 { color: var(--accent-gold); }
 
 /* Dark Mode FullCalendar Specifics */
@@ -108,10 +113,14 @@ body.dark-mode .fc-toolbar-title { color: var(--text-color-dark); }
 body.dark-mode .fc-daygrid-day-number { color: var(--text-muted-dark); }
 body.dark-mode .fc-col-header-cell-cushion { color: var(--text-color-dark); }
 body.dark-mode #calendar-placeholder { background-color: var(--card-bg-dark); }
-body.dark-mode .fc-event.event-class-past { background-color: #4A4A4A !important; border-color: #555555 !important; color: var(--text-muted-dark) !important; } 
-body.dark-mode .fc-event.event-class-future { background-color: #3A3F44 !important; border-color: #4A4F55 !important; color: var(--text-muted-dark) !important; } 
-body.dark-mode .fc-event.event-class-due { background-color: var(--accent-gold-muted) !important; border-color: var(--accent-gold-muted) !important; color: var(--primary-dark-dark) !important; }
-body.dark-mode .fc-event.event-class-upcoming { background-color: #546E7A !important; border-color: #546E7A !important; color: var(--text-color-dark) !important; } 
+
+/* Event colors in dark mode - ensuring text color is readable */
+/* These rely on JS setting the base colors. These are fallbacks or adjustments. */
+body.dark-mode .fc-event[style*="background-color: rgb(233, 236, 239)"] /* Past: #E9ECEF */ { color: var(--primary-dark-dark) !important; background-color: #3E454C !important; border-color: #4A5055 !important;} 
+body.dark-mode .fc-event[style*="background-color: rgb(189, 154, 95)"] /* Due: #bd9a5f */ { color: white !important; } 
+body.dark-mode .fc-event[style*="background-color: rgb(174, 198, 207)"] /* Upcoming: #AEC6CF */ { color: var(--primary-dark-light) !important; background-color: #546E7A !important; border-color: #546E7A !important;} 
+body.dark-mode .fc-event[style*="background-color: rgb(245, 245, 245)"] /* Future: #F5F5F5 */ { color: var(--primary-dark-dark) !important; background-color: #4A4A4A !important; border-color: #555555 !important;} 
+
 body.dark-mode .fc-day-today .fc-daygrid-day-frame { background-color: var(--accent-gold-muted) !important; opacity: 0.6; }
 body.dark-mode .fc-daygrid-day-frame:not(.fc-day-today):hover { background-color: var(--calendar-hover-grey-dark) !important; } 
 body.dark-mode .fc-day-today .fc-daygrid-day-frame:hover { background-color: var(--accent-gold-muted) !important; opacity: 0.7; }
@@ -154,16 +163,18 @@ body.dark-mode .fc-day-today .fc-daygrid-day-frame:hover { background-color: var
 .kpi-card:hover::after { left: 125%; }
 body.dark-mode .kpi-card::after { background: linear-gradient(to right, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.1) 50%, rgba(255, 255, 255, 0) 100%);}
 .kpi-card > * { position: relative; z-index: 2; }
+
+/* --- Controls & Filter (UPDATED) --- */
 .controls-container { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; }
 .controls-container h3 { margin-bottom: 0; flex-grow: 1; font-size: 1.3em; }
-.filter-container { display: flex; align-items: center; position: relative; /* For custom arrow positioning */ }
+.filter-container { display: flex; align-items: center; position: relative; }
 .filter-container label { margin-left: 10px; font-weight: 600; font-size: 0.9em; }
 .filter-container select { 
-    padding: 10px 15px; /* Adjusted padding */
-    padding-left: 35px; /* Space for custom arrow */
-    border: none; /* Removed border */
+    padding: 10px 15px; 
+    padding-left: 35px; 
+    border: 1px solid var(--border-color-light);
     border-radius: var(--border-radius);
-    background-color: var(--card-bg-light); /* Match card background */
+    background-color: var(--card-bg-light); 
     color: var(--text-color-light);
     font-family: 'Cairo', sans-serif;
     font-size: 1em;
@@ -171,45 +182,43 @@ body.dark-mode .kpi-card::after { background: linear-gradient(to right, rgba(255
     appearance: none; 
     -webkit-appearance: none;
     -moz-appearance: none;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.05); /* Subtle shadow */
     transition: all var(--transition-speed);
-    min-width: 200px; /* Ensure it has some width */
+    min-width: 200px; 
+    line-height: 1.5; /* Ensure text is vertically centered */
 }
-/* Custom Arrow for Select */
-.filter-container::after {
-    content: '\f078'; /* Font Awesome chevron-down */
+.filter-container::after { /* Custom Arrow for Select */
+    content: '\f078'; 
     font-family: 'Font Awesome 6 Free';
     font-weight: 900;
     color: var(--accent-gold);
     position: absolute;
-    left: 12px; /* Position arrow on the left */
+    left: 12px; 
     top: 50%;
     transform: translateY(-50%);
-    pointer-events: none; /* So it doesn't interfere with select click */
+    pointer-events: none; 
     font-size: 0.8em;
 }
 body.dark-mode .filter-container select {
     background-color: var(--card-bg-dark);
     color: var(--text-color-dark);
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    border-color: var(--border-color-dark); 
 }
-body.dark-mode .filter-container::after {
-    color: var(--accent-gold-muted);
-}
-
+body.dark-mode .filter-container::after { color: var(--accent-gold-muted); }
 .filter-container select:focus { 
     outline: none; 
-    box-shadow: 0 0 0 2px var(--accent-gold-muted), 0 2px 8px rgba(0,0,0,0.1); /* Focus style */
+    border-color: var(--accent-gold); 
+    box-shadow: 0 0 0 2px rgba(200, 150, 56, 0.3); 
 }
-/* Styling options is very limited and browser-dependent */
 .filter-container select option {
-    background-color: var(--card-bg-light); /* Or sidebar-bg-light */
+    background: var(--card-bg-light); 
     color: var(--text-color-light);
-    padding: 10px; /* May not apply everywhere */
+    padding: 10px; 
 }
-/* Attempt to style option hover - may not work in all browsers */
-/* For browsers that support it (mostly WebKit based like Chrome/Edge for background) */
-/* .filter-container select option:hover { background-color: var(--accent-gold-muted) !important; color: white !important; } */
+/* Styling select option hover is very browser-dependent and often not possible for native selects */
+/* The following is an ATTEMPT and might not work or look good in all browsers */
+/* For Webkit (Chrome, Safari, Edge) - might need to be more specific or use JS for full control */
+/* option:hover { background-color: var(--table-row-hover-light) !important; color: var(--primary-dark-light) !important; } */
+/* body.dark-mode option:hover { background-color: var(--table-row-hover-dark) !important; color: var(--text-color-dark) !important; } */
 
 
 .table-container { background-color: var(--card-bg-light); border-radius: var(--border-radius); padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); overflow-x: auto; margin-bottom: 20px; }
@@ -218,7 +227,7 @@ th, td { padding: 8px 10px; text-align: right; border-bottom: 1px solid var(--bo
 thead th { background-color: #f1f3f5; font-weight: 700; color: var(--primary-dark-light); }
 tbody tr:nth-child(even) { background-color: #fdfdfd; }
 tbody tr { transition: background-color var(--transition-speed); }
-tbody tr:hover { background-color: var(--table-row-hover-light); } 
+tbody tr:hover { background-color: var(--table-row-hover-light); } /* UPDATED Table row hover */
 .past-due td { opacity: 0.7; } 
 .status-tag { padding: 3px 8px; border-radius: 10px; font-size: 0.7em; color: white; white-space: nowrap; font-weight: 600; text-transform: uppercase; }
 .status-due { background-color: var(--accent-orange); } 
