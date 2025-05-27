@@ -11,14 +11,14 @@
     --border-color-light: #E9ECEF; 
     --primary-dark-light: #2C3E50;
     
-    --bg-color-dark: #2A2A2A; /* Slightly darker for better contrast */
-    --sidebar-bg-dark: #343A40; /* Standard dark */
-    --topbar-bg-dark: #343A40;  /* Standard dark */
-    --card-bg-dark: #3A3F44;   /* Slightly lighter dark for cards */
+    --bg-color-dark: #2A2A2A;
+    --sidebar-bg-dark: #343A40;
+    --topbar-bg-dark: #343A40;
+    --card-bg-dark: #343A40; 
     --text-color-dark: #E9ECEF;
     --text-muted-dark: #ADB5BD;
     --border-color-dark: #495057; 
-    --primary-dark-dark: #546E7A; /* Lighter shade for dark mode primary text */
+    --primary-dark-dark: #455a64; 
 
     --accent-gold: #C89638; 
     --accent-gold-muted: #bd9a5f; 
@@ -28,8 +28,8 @@
     --accent-green: #F5F5F5; 
     --past-due-color: #95A5A6; 
 
-    --calendar-hover-grey-light: rgba(222, 191, 138, 0.15); /* Light Gold hover for day cells */
-    --calendar-hover-grey-dark: rgba(189, 154, 95, 0.25); /* Slightly more opaque Gold hover for dark */
+    --calendar-hover-grey-light: #f0f0f0;
+    --calendar-hover-grey-dark: #484848;
     --fc-today-button-bg-light: #D6DBDF;
     --fc-today-button-text-light: var(--primary-dark-light);
     --fc-today-button-hover-bg-light: #AEB6BF;
@@ -38,7 +38,7 @@
     --fc-today-button-text-dark: var(--text-color-dark);
     --fc-today-button-hover-bg-dark: #808B96;
 
-    --table-row-hover-light: rgba(222, 191, 138, 0.2); /* Muted gold for table row hover */
+    --table-row-hover-light: rgba(222, 191, 138, 0.2); 
     --table-row-hover-dark: rgba(189, 154, 95, 0.15);   
 
 
@@ -79,10 +79,16 @@ body.dark-mode .kpi-icon { color: var(--accent-gold); }
 body.dark-mode .table-container, body.dark-mode .chart-container { background-color: var(--card-bg-dark); }
 body.dark-mode th, body.dark-mode td { border-bottom-color: var(--border-color-dark); }
 body.dark-mode thead th { background-color: var(--border-color-dark); color: var(--text-color-dark); }
-body.dark-mode tbody tr:nth-child(even) { background-color: #2c3034; } /* Darker even rows */
+body.dark-mode tbody tr:nth-child(even) { background-color: #2c3034; }
 body.dark-mode tbody tr:hover { background-color: var(--table-row-hover-dark); } 
-body.dark-mode .past-due td { opacity: 0.6; color: var(--text-muted-dark); }
-body.dark-mode .filter-container select { background-color: #555; border-color: var(--border-color-dark); color: white; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23C89638' viewBox='0 0 16 16'%3E%3Cpath fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3E%3C/svg%3E"); }
+body.dark-mode .past-due td { opacity: 0.6; color: var(--text-muted-dark); } /* Adjusted from 0.5 */
+body.dark-mode .filter-container select { 
+    background-color: var(--card-bg-dark); 
+    border-color: var(--border-color-dark); 
+    color: var(--text-color-dark); 
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%23C89638' class='bi bi-chevron-down' viewBox='0 0 16 16'%3E%3Cpath fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3E%3C/svg%3E");
+    border-left-color: var(--accent-gold);
+}
 body.dark-mode .pagination-container a { background-color: #444; color: var(--text-muted-dark); border-left-color: var(--border-color-dark); } 
 body.dark-mode .pagination-container li:first-child a { border-right-color: var(--border-color-dark); }
 body.dark-mode .pagination-container .active a, body.dark-mode .pagination-container a:hover { background-color: var(--accent-gold); color: white; }
@@ -102,20 +108,16 @@ body.dark-mode .fc-toolbar-title { color: var(--text-color-dark); }
 body.dark-mode .fc-daygrid-day-number { color: var(--text-muted-dark); }
 body.dark-mode .fc-col-header-cell-cushion { color: var(--text-color-dark); }
 body.dark-mode #calendar-placeholder { background-color: var(--card-bg-dark); }
-/* Event colors in dark mode */
-body.dark-mode .fc-event { /* Base for dark mode events if needed */ }
 body.dark-mode .fc-event.event-class-past { background-color: #4A4A4A !important; border-color: #555555 !important; color: var(--text-muted-dark) !important; } 
+body.dark-mode .fc-event.event-class-future { background-color: #3A3F44 !important; border-color: #4A4F55 !important; color: var(--text-muted-dark) !important; } 
 body.dark-mode .fc-event.event-class-due { background-color: var(--accent-gold-muted) !important; border-color: var(--accent-gold-muted) !important; color: var(--primary-dark-dark) !important; }
 body.dark-mode .fc-event.event-class-upcoming { background-color: #546E7A !important; border-color: #546E7A !important; color: var(--text-color-dark) !important; } 
-body.dark-mode .fc-event.event-class-future { background-color: #3A3F44 !important; border-color: #4A4F55 !important; color: var(--text-muted-dark) !important; } 
-
-body.dark-mode .fc-day-today .fc-daygrid-day-frame { background-color: var(--accent-gold-muted) !important; opacity: 0.6; } /* Adjusted opacity */
+body.dark-mode .fc-day-today .fc-daygrid-day-frame { background-color: var(--accent-gold-muted) !important; opacity: 0.6; }
 body.dark-mode .fc-daygrid-day-frame:not(.fc-day-today):hover { background-color: var(--calendar-hover-grey-dark) !important; } 
-body.dark-mode .fc-day-today .fc-daygrid-day-frame:hover { background-color: var(--accent-gold-muted) !important; opacity: 0.7; } /* Adjusted opacity */
+body.dark-mode .fc-day-today .fc-daygrid-day-frame:hover { background-color: var(--accent-gold-muted) !important; opacity: 0.7; }
 
 
 /* --- Layout & General --- */
-/* ... (Identical to previous version) ... */
 .dashboard-container { display: flex; }
 .sidebar { width: var(--sidebar-width); height: 100vh; background-color: var(--sidebar-bg-light); position: fixed; right: 0; top: 0; border-left: 1px solid var(--border-color-light); transition: background-color var(--transition-speed), border-color var(--transition-speed); padding-top: 10px; box-shadow: -2px 0 5px rgba(0,0,0,0.05); z-index: 20; display: flex; flex-direction: column; }
 .main-content { margin-right: var(--sidebar-width); width: calc(100% - var(--sidebar-width)); padding-top: var(--topbar-height); }
@@ -154,17 +156,69 @@ body.dark-mode .kpi-card::after { background: linear-gradient(to right, rgba(255
 .kpi-card > * { position: relative; z-index: 2; }
 .controls-container { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; }
 .controls-container h3 { margin-bottom: 0; flex-grow: 1; font-size: 1.3em; }
-.filter-container { display: flex; align-items: center; }
+.filter-container { display: flex; align-items: center; position: relative; /* For custom arrow positioning */ }
 .filter-container label { margin-left: 10px; font-weight: 600; font-size: 0.9em; }
-.filter-container select { padding: 8px 30px 8px 12px; border: 1px solid var(--border-color-light); border-radius: var(--border-radius); background-color: white; font-family: 'Cairo', sans-serif; font-size: 0.9em; cursor: pointer; appearance: none; -webkit-appearance: none; -moz-appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%23C89638' class='bi bi-chevron-down' viewBox='0 0 16 16'%3E%3Cpath fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: left 8px center; border-left: 4px solid var(--accent-gold); transition: all var(--transition-speed); }
-.filter-container select:focus { border-color: var(--accent-gold); outline: none; box-shadow: 0 0 5px rgba(200, 150, 56, 0.5); }
+.filter-container select { 
+    padding: 10px 15px; /* Adjusted padding */
+    padding-left: 35px; /* Space for custom arrow */
+    border: none; /* Removed border */
+    border-radius: var(--border-radius);
+    background-color: var(--card-bg-light); /* Match card background */
+    color: var(--text-color-light);
+    font-family: 'Cairo', sans-serif;
+    font-size: 1em;
+    cursor: pointer;
+    appearance: none; 
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05); /* Subtle shadow */
+    transition: all var(--transition-speed);
+    min-width: 200px; /* Ensure it has some width */
+}
+/* Custom Arrow for Select */
+.filter-container::after {
+    content: '\f078'; /* Font Awesome chevron-down */
+    font-family: 'Font Awesome 6 Free';
+    font-weight: 900;
+    color: var(--accent-gold);
+    position: absolute;
+    left: 12px; /* Position arrow on the left */
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none; /* So it doesn't interfere with select click */
+    font-size: 0.8em;
+}
+body.dark-mode .filter-container select {
+    background-color: var(--card-bg-dark);
+    color: var(--text-color-dark);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+body.dark-mode .filter-container::after {
+    color: var(--accent-gold-muted);
+}
+
+.filter-container select:focus { 
+    outline: none; 
+    box-shadow: 0 0 0 2px var(--accent-gold-muted), 0 2px 8px rgba(0,0,0,0.1); /* Focus style */
+}
+/* Styling options is very limited and browser-dependent */
+.filter-container select option {
+    background-color: var(--card-bg-light); /* Or sidebar-bg-light */
+    color: var(--text-color-light);
+    padding: 10px; /* May not apply everywhere */
+}
+/* Attempt to style option hover - may not work in all browsers */
+/* For browsers that support it (mostly WebKit based like Chrome/Edge for background) */
+/* .filter-container select option:hover { background-color: var(--accent-gold-muted) !important; color: white !important; } */
+
+
 .table-container { background-color: var(--card-bg-light); border-radius: var(--border-radius); padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); overflow-x: auto; margin-bottom: 20px; }
 table { width: 100%; border-collapse: collapse; }
 th, td { padding: 8px 10px; text-align: right; border-bottom: 1px solid var(--border-color-light); font-size: 0.9em; }
 thead th { background-color: #f1f3f5; font-weight: 700; color: var(--primary-dark-light); }
 tbody tr:nth-child(even) { background-color: #fdfdfd; }
 tbody tr { transition: background-color var(--transition-speed); }
-tbody tr:hover { background-color: var(--table-row-hover-light); } /* UPDATED Table row hover */
+tbody tr:hover { background-color: var(--table-row-hover-light); } 
 .past-due td { opacity: 0.7; } 
 .status-tag { padding: 3px 8px; border-radius: 10px; font-size: 0.7em; color: white; white-space: nowrap; font-weight: 600; text-transform: uppercase; }
 .status-due { background-color: var(--accent-orange); } 
@@ -188,7 +242,6 @@ body.dark-mode .pagination-container li.disabled a { background-color: #555; col
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
 /* --- Modal Styles --- */
-/* ... (Identical to previous version) ... */
 .modal { display: none; position: fixed; z-index: 100; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.6); animation: fadeInModal 0.3s ease;}
 @keyframes fadeInModal { from {opacity: 0;} to {opacity: 1;} }
 .modal-content { background-color: var(--card-bg-light); color: var(--text-color-light); margin: 10% auto; padding: 25px 30px; border-top: 5px solid var(--accent-gold); width: 90%; max-width: 500px; border-radius: var(--border-radius); box-shadow: 0 5px 20px rgba(0,0,0,0.3); position: relative; animation: slideInModal 0.4s ease-out;}
@@ -202,7 +255,6 @@ body.dark-mode .modal-content h3 { color: var(--accent-gold); }
 .modal-button { background-color: var(--accent-gold); color: white; margin-top: 20px; font-size: 0.9em; }
 .modal-button:hover { background-color: var(--accent-gold-muted); color: var(--primary-dark-light); }
 
-
 /* --- FullCalendar Customizations --- */
 #calendar-placeholder { padding: 20px; background-color: var(--card-bg-light); border-radius: var(--border-radius); box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
 .fc .fc-button-primary:not(.fc-today-button) { background-color: var(--accent-gold-muted); border-color: var(--accent-gold-muted); color: var(--primary-dark-light); }
@@ -212,32 +264,10 @@ body.dark-mode .modal-content h3 { color: var(--accent-gold); }
 .fc .fc-today-button:hover { background-color: var(--fc-today-button-hover-bg-light) !important; border-color: var(--fc-today-button-hover-bg-light) !important;}
 .fc-toolbar-title { color: var(--primary-dark-light); font-size: 1.4em !important; }
 .fc-daygrid-day-number, .fc-col-header-cell-cushion { color: var(--text-muted-light); text-decoration: none; }
-
-/* FullCalendar Day Cell Styling */
 .fc .fc-daygrid-day-frame { transition: background-color var(--transition-speed); min-height: 80px; }
-.fc .fc-daygrid-bg-event:hover { /* Try to disable any bg event hover if it's causing week highlight */
-    background-color: transparent !important;
-    opacity: 0 !important;
-}
-.fc .fc-daygrid-day-bottom, .fc-daygrid-day-top { /* Ensure these don't get unwanted hover */
-    pointer-events: none; /* May prevent event clicks if too broad, use with caution */
-}
-.fc-daygrid-day:not(.fc-day-today) .fc-daygrid-day-frame:hover { /* Target frame for specific day hover */
-    background-color: var(--calendar-hover-grey-light) !important; 
-    cursor: default; 
-}
-body.dark-mode .fc-daygrid-day:not(.fc-day-today) .fc-daygrid-day-frame:hover {
-    background-color: var(--calendar-hover-grey-dark) !important;
-}
+.fc .fc-daygrid-day:not(.fc-day-today) .fc-daygrid-day-frame:hover { background-color: var(--calendar-hover-grey-light) !important; cursor: default; }
+body.dark-mode .fc .fc-daygrid-day:not(.fc-day-today) .fc-daygrid-day-frame:hover { background-color: var(--calendar-hover-grey-dark) !important;}
 .fc-day-today .fc-daygrid-day-frame { background-color: var(--accent-gold-muted) !important; opacity: 0.6; }
 .fc-day-today .fc-daygrid-day-frame:hover { background-color: var(--accent-gold-muted) !important; opacity: 0.7; }
-
-/* FullCalendar Event Styling */
 .fc-event { border-width: 0px !important; padding: 3px 5px !important; font-size: 0.8em !important; cursor: pointer; border-radius: 3px;}
-.fc-daygrid-event-harness > a.fc-event:hover, 
-.fc-timegrid-event-harness > .fc-event:hover, 
-.fc-list-event:hover { 
-    filter: brightness(1.05); 
-    transform: scale(1.02);
-    transition: filter 0.2s, transform 0.2s;
-}
+.fc-daygrid-event-harness > a.fc-event:hover, .fc-timegrid-event-harness > .fc-event:hover, .fc-list-event:hover { filter: brightness(1.05); transform: scale(1.02); transition: filter 0.2s, transform 0.2s;}
