@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-    console.log("SCRIPT.JS LOADED AND DOMCONTENTLOADED FIRED! Current Time:", new Date().toLocaleTimeString());
+    console.log("SCRIPT.JS LOADED. Current Time:", new Date().toLocaleTimeString());
 
     // --- DOM Elements ---
     const tableBody = document.getElementById('reports-table-body');
@@ -34,15 +34,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const modalEmailLink = eventModal ? document.getElementById('modal-email-link') : null;
     const closeModalButton = eventModal ? eventModal.querySelector('.close-button') : null;
 
-    console.log("DOM Elements Selection Check (Post-Full Init):", {
-        tableBodyExists: !!tableBody,
-        searchInputExists: !!searchInput,
-        kpiTotalReportsExists: !!kpiTotalReports,
-        kpiDueInPeriodExists: !!kpiDueInPeriod,
-        calendarElExists: !!calendarEl,
-        eventModalExists: !!eventModal 
-    });
-
     // --- Settings & State ---
     const dataUrl = 'data.json';
     const targetEmail = 'shamdan@aur.com.sa';
@@ -61,59 +52,76 @@ document.addEventListener('DOMContentLoaded', () => {
     const today = new Date(new Date(systemBaseDate).setHours(0, 0, 0, 0));
     const threeDaysLater = new Date(today);
     threeDaysLater.setDate(today.getDate() + 3);
-    console.log("Calculated 'today':", today.toISOString(), "'threeDaysLater':", threeDaysLater.toISOString());
 
     function getThemeColor(cssVarName, fallbackColor) { /* ... unchanged ... */ }
-    function getStatus(dueDateStr) { /* ... unchanged ... */ }
 
-    function createMailtoLink(reportTitle) {
+    // --- UPDATED getStatus function ---
+    function getStatus(dueDateStr) {
+        const defaultErrorStatus = { 
+            text: "تاريخ غير صالح", 
+            classForTable: "status-error", 
+            isPast: false, 
+            isNear: false, 
+            eventColors: { backgroundColor: 'gray', borderColor: 'gray', textColor: 'white' } 
+        };
+
+        if (!dueDateStr || typeof dueDateStr !== 'string' || !dueDateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+            console.error("Invalid dueDateStr received by getStatus:", dueDateStr);
+            return defaultErrorStatus;
+        }
+        
+        const due = new Date(dueDateStr); // Simpler date parsing
+        if (isNaN(due.getTime())) { // Check if date is valid after parsing
+            console.error("Failed to parse dueDateStr into valid date:", dueDateStr);
+            return defaultErrorStatus;
+        }
+        due.setHours(0, 0, 0, 0); // Normalize to start of day
+
+        const pastEvent = { backgroundColor: '#E9ECEF', borderColor: '#D0D0D0', textColor: '#6C757D' };
+        const dueTodayEvent = { backgroundColor: getThemeColor('--accent-gold-muted', '#bd9a5f'), borderColor: getThemeColor('--accent-gold-muted', '#bd9a5f'), textColor: '#FFFFFF' };
+        const upcomingEvent = { backgroundColor: getThemeColor('--accent-blue', '#AEC6CF'), borderColor: getThemeColor('--accent-blue', '#AEC6CF'), textColor: getThemeColor('--primary-dark-light', '#2C3E50') };
+        const futureEvent = { backgroundColor: getThemeColor('--accent-green', '#F5F5F5'), borderColor: getThemeColor('--accent-green', '#F5F5F5'), textColor: '#6C757D' };
+
+        if (due < today) return { text: "منتهي", classForTable: "status-past", isPast: true, isNear: false, eventColors: pastEvent };
+        if (due.getTime() === today.getTime()) return { text: "مستحق اليوم", classForTable: "status-due", isPast: false, isNear: true, eventColors: dueTodayEvent };
+        if (due > today && due <= threeDaysLater) return { text: "قادم قريباً", classForTable: "status-upcoming", isPast: false, isNear: true, eventColors: upcomingEvent };
+        return { text: "قادم", classForTable: "status-future", isPast: false, isNear: false, eventColors: futureEvent };
+    }
+
+    function createMailtoLink(reportTitle) { /* ... unchanged with new body ... */
         const subject = encodeURIComponent(`تقرير: ${reportTitle}`);
-        const bodyLines = [
-            "السلام عليكم",
-            "", // سطر فارغ
-            `مرفق لكم تقرير "${reportTitle}"`,
-            "", // سطر فارغ
-            "مع وافر التحية والتقدير"
-        ];
-        const body = encodeURIComponent(bodyLines.join('\n')); // \n لسطر جديد
+        const bodyLines = ["السلام عليكم","","مرفق لكم تقرير \"" + reportTitle + "\"","","مع وافر التحية والتقدير"];
+        const body = encodeURIComponent(bodyLines.join('\n'));
         return `mailto:${targetEmail}?subject=${subject}&body=${body}`;
     }
     
-    function createCharts(dataForCharts) { /* ... unchanged with its console.logs ... */ }
+    function createCharts(dataForCharts) { /* ... unchanged ... */ }
     
     function populateTable(reportsToShow) {
-        console.log("populateTable: Starting. Reports to show:", reportsToShow ? reportsToShow.length : 'null/undefined');
-        if (!tableBody) {
-            console.error("populateTable: tableBody element not found! Cannot populate.");
-            return;
-        }
+        // console.log("populateTable: Starting. Reports to show:", reportsToShow ? reportsToShow.length : 'null/undefined');
+        if (!tableBody) { return; } // Simplified check
         tableBody.innerHTML = ''; 
         if (!reportsToShow || reportsToShow.length === 0) {
-            console.log("populateTable: No reports to show, displaying empty message.");
             tableBody.innerHTML = '<tr><td colspan="7">لا توجد تقارير تطابق البحث أو التصفية.</td></tr>';
             return;
         }
         
-        reportsToShow.forEach((report, index) => {
+        reportsToShow.forEach((report) => {
             if (!Array.isArray(report) || report.length < 5) {
-                console.error(`populateTable: Invalid report data at index ${index}:`, report);
+                console.error(`populateTable: Invalid report data structure:`, report);
                 return; 
             }
-
             const [id, department, title, frequency, dateString] = report;
-            // console.log(`populateTable: Processing report ID ${id}, Title: ${title}`); 
-
             const statusInfo = getStatus(dateString); 
             
+            // This check should now be less necessary due to getStatus improvements, but good for safety.
             if (!statusInfo || typeof statusInfo.isPast === 'undefined') {
-                console.error(`populateTable: Invalid statusInfo for report ID ${id}, dateString: ${dateString}`, statusInfo);
+                console.error(`populateTable: Still received invalid statusInfo for report ID ${id}`, statusInfo);
                 return; 
             }
 
             const row = document.createElement('tr');
-            if (statusInfo.isPast) {
-                row.classList.add('past-due');
-            }
+            if (statusInfo.isPast) row.classList.add('past-due');
             
             row.innerHTML = `
                 <td>${id !== undefined ? id : 'N/A'}</td>
@@ -125,24 +133,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td><a href="${createMailtoLink(title || 'تقرير غير محدد')}" class="icon-button" title="إرسال بريد"><i class="fas fa-envelope"></i></a></td>
             `;
             tableBody.appendChild(row);
-            // console.log(`populateTable: Appended row for report ID ${id}`);
         });
-        console.log("populateTable: Finished. Table populated with (attempted)", reportsToShow.length, "rows.");
+        // console.log("populateTable: Finished.");
     }
 
-    function updateKPIs(currentBaseFilteredData, currentDateRangeFilteredData) { /* ... unchanged with its console.logs ... */ }
-    function displayPagination(totalRows) { /* ... unchanged with its console.logs ... */ }
+    function updateKPIs(currentBaseFilteredData, currentDateRangeFilteredData) { /* ... unchanged ... */ }
+    function displayPagination(totalRows) { /* ... unchanged ... */ }
     
     function renderCurrentPage() {
-        console.log("--- renderCurrentPage Start --- Current Page:", currentPage);
+        // console.log("--- renderCurrentPage Start --- Current Page:", currentPage);
         if (!allReportsData || allReportsData.length === 0) {
-            console.warn("renderCurrentPage: allReportsData is empty or not loaded. Aborting render.");
-            if (tableBody) tableBody.innerHTML = '<tr><td colspan="7">لا توجد بيانات لعرضها حالياً (renderCurrentPage).</td></tr>';
+            if (tableBody) tableBody.innerHTML = '<tr><td colspan="7">لا توجد بيانات لعرضها (renderCurrentPage - no allReportsData).</td></tr>';
             updateKPIs([], []); 
             displayPagination(0); 
             return;
         }
-        // ... (rest of renderCurrentPage as in previous console.log version, including its internal console.logs)
+        // ... (rest of renderCurrentPage as in previous console.log version)
         const searchTerm = searchInput ? searchInput.value.toLowerCase() : "";
         const selectedDept = departmentFilter ? departmentFilter.value : "all";
         const startDateValue = startDateInput ? startDateInput.value : "";
@@ -158,7 +164,6 @@ document.addEventListener('DOMContentLoaded', () => {
             endDate = new Date(endDateValue);
             if (!isNaN(endDate.getTime())) endDate.setHours(23, 59, 59, 999); else endDate = null;
         }
-        console.log("renderCurrentPage: Filters - Search:", searchTerm, "Dept:", selectedDept, "Start:", startDate, "End:", endDate);
         
         baseFilteredData = allReportsData.filter(report => {
             if (!report || !Array.isArray(report) || report.length < 3) return false;
@@ -167,72 +172,60 @@ document.addEventListener('DOMContentLoaded', () => {
                                 report[2].toLowerCase().includes(searchTerm);
             return deptMatch && searchMatch;
         });
-        console.log("renderCurrentPage: Base filtered data count (after search & dept):", baseFilteredData.length);
 
         dateRangeFilteredData = baseFilteredData.filter(report => {
             if (!report || !Array.isArray(report) || report.length < 5) return false;
             const reportDate = new Date(report[4]);
-            if (isNaN(reportDate.getTime())) { 
-                console.warn("renderCurrentPage: Invalid date in report for date filter:", report);
-                return false;
-            }
+            if (isNaN(reportDate.getTime())) return false;
             reportDate.setHours(0,0,0,0); 
             const matchesStartDate = !startDate || reportDate >= startDate;
             const matchesEndDate = !endDate || reportDate <= endDate;
             return matchesStartDate && matchesEndDate;
         });
-        console.log("renderCurrentPage: Date range filtered data count (final for table):", dateRangeFilteredData.length);
 
         const startIndex = (currentPage - 1) * rowsPerPage;
         const endIndex = startIndex + rowsPerPage;
         const reportsToShow = dateRangeFilteredData.slice(startIndex, endIndex);
-        console.log("renderCurrentPage: Reports to show on this page (after slice):", reportsToShow.length);
 
-        populateTable(reportsToShow); // This should now log more details
+        populateTable(reportsToShow);
         displayPagination(dateRangeFilteredData.length);
         updateKPIs(baseFilteredData, dateRangeFilteredData); 
-        console.log("--- renderCurrentPage End ---");
+        // console.log("--- renderCurrentPage End ---");
     }
     
-    function populateFilter(data) { /* ... unchanged with its console.logs ... */ }
+    function populateFilter(data) { /* ... unchanged ... */ }
 
     async function fetchData() {
-        console.log("1. fetchData called");
+        console.log("fetchData: Initiating...");
         try {
             const response = await fetch(dataUrl);
-            console.log("2. Fetch response status:", response.status, ". Is response ok?", response.ok);
+            console.log("fetchData: Response status:", response.status, "Ok:", response.ok);
             if (!response.ok) {
-                console.error("Network response was not ok for data.json. Status:", response.status, response.statusText);
-                if (tableBody) tableBody.innerHTML = `<tr><td colspan="7">فشل تحميل البيانات. الحالة: ${response.status}. تأكد من وجود ملف data.json في المسار الصحيح.</td></tr>`;
+                console.error("fetchData: Network error. Status:", response.status, response.statusText);
+                if (tableBody) tableBody.innerHTML = `<tr><td colspan="7">فشل تحميل البيانات. الحالة: ${response.status}.</td></tr>`;
                 updateKPIs([], []); 
                 return; 
             }
             allReportsData = await response.json();
-            console.log("3. Data fetched and parsed. Type:", typeof allReportsData, "Is Array:", Array.isArray(allReportsData), "Total reports:", allReportsData ? allReportsData.length : 'undefined/null'); 
+            console.log("fetchData: Data parsed. Type:", typeof allReportsData, "Is Array:", Array.isArray(allReportsData), "Length:", allReportsData ? allReportsData.length : 'N/A'); 
             
             if (Array.isArray(allReportsData) && allReportsData.length > 0) {
-                console.log("fetchData: Data is valid array. Attempting to populate filter...");
-                if(departmentFilter) {
-                    populateFilter(allReportsData); 
-                } else {
-                    console.error("fetchData: departmentFilter element is null, cannot populate.");
-                }
-                console.log("fetchData: Attempting initial render...");
+                if(departmentFilter) populateFilter(allReportsData); else console.error("fetchData: departmentFilter is null.");
                 renderCurrentPage(); 
-                console.log("4. Initial render triggered after data fetch.");
+                console.log("fetchData: Initial render process completed.");
             } else {
-                console.warn("fetchData: No data received, data array is empty, or data is not an array after parsing.");
-                if (tableBody) tableBody.innerHTML = '<tr><td colspan="7">تم تحميل البيانات ولكنها فارغة أو بتنسيق غير صحيح.</td></tr>';
+                console.warn("fetchData: Data is empty or not an array.");
+                if (tableBody) tableBody.innerHTML = '<tr><td colspan="7">البيانات فارغة أو غير صحيحة.</td></tr>';
                 updateKPIs([], []); 
             }
         } catch (error) {
-            console.error('Fetch Error in fetchData:', error);
-            if (tableBody) tableBody.innerHTML = `<tr><td colspan="7">فشل تحميل البيانات (خطأ في الشبكة أو تحليل JSON): ${error.message}</td></tr>`;
+            console.error('fetchData: Critical error during fetch or processing:', error);
+            if (tableBody) tableBody.innerHTML = `<tr><td colspan="7">خطأ فادح في تحميل البيانات: ${error.message}</td></tr>`;
             updateKPIs([], []);
         }
     }
 
-    function handleFilterAndSearch() { /* ... unchanged with its console.logs ... */ }
+    function handleFilterAndSearch() { /* ... unchanged ... */ }
     function resetDateFilter() { /* ... unchanged ... */ }
     function toggleTheme() { /* ... unchanged ... */ }
     function loadTheme() { /* ... unchanged ... */ }
@@ -248,20 +241,16 @@ document.addEventListener('DOMContentLoaded', () => {
         const clickedLi = event.target.closest('li[data-view]');
         
         if (!clickedLi) {
-            console.log("Navigation ignored: clicked target is not an li with data-view or child of it. Clicked:", event.target);
-            console.log("--- handleNavigation End (No valid li) ---");
+             console.log("handleNavigation: Clicked target is not a valid nav LI. Clicked element:", event.target);
             return;
         }
-        console.log("Clicked li element:", clickedLi, "data-view:", clickedLi.dataset.view, "Current active status:", clickedLi.classList.contains('active'));
-
         if (clickedLi.classList.contains('active')) {
-            console.log("Navigation ignored: clicked li is already active.");
-            console.log("--- handleNavigation End (Already Active) ---");
+            console.log("handleNavigation: Clicked LI is already active.");
             return;
         }
 
         const viewId = clickedLi.dataset.view;
-        console.log("Navigating to viewId:", viewId);
+        console.log("handleNavigation: Navigating to viewId:", viewId);
 
         if(navLinks) navLinks.forEach(link => link.classList.remove('active'));
         if(views) views.forEach(view => view.classList.remove('active-view'));
@@ -270,15 +259,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const targetView = document.getElementById(`${viewId}-section`);
         if (targetView) {
             targetView.classList.add('active-view');
-            console.log("View activated:", viewId, "Element:", targetView);
+            console.log("handleNavigation: View activated:", viewId);
         } else {
-            console.error("Target view element not found for ID:", `${viewId}-section`);
-            console.log("--- handleNavigation End (Error View Not Found) ---");
+            console.error("handleNavigation: Target view element not found for ID:", `${viewId}-section`);
             return; 
         }
         
         if (viewId === 'analytics') {
-            console.log("Analytics tab processing. Charts drawn previously:", chartsDrawn);
+            console.log("handleNavigation: Analytics tab processing. Charts drawn previously:", chartsDrawn);
             const currentSearchTerm = searchInput ? searchInput.value.toLowerCase() : "";
             const currentSelectedDept = departmentFilter ? departmentFilter.value : "all";
             const chartData = allReportsData.filter(report => { 
@@ -288,49 +276,28 @@ document.addEventListener('DOMContentLoaded', () => {
                 const matchesDept = (currentSelectedDept === 'all') || (report[1] === currentSelectedDept);
                 return matchesSearch && matchesDept;
             });
-            console.log("Data for analytics charts:", chartData.length);
             createCharts(chartData); 
         }
 
         if (viewId === 'calendar') {
-            console.log("Calendar tab processing.");
+            console.log("handleNavigation: Calendar tab processing.");
             initializeCalendar(); 
         }
-        console.log("--- handleNavigation End (Success for view:", viewId, ") ---"); // Added viewId here
+        console.log("--- handleNavigation End (Success for view:", viewId, ") ---");
     }
 
     // Event Listeners
     console.log("Attaching event listeners...");
     if(searchInput) searchInput.addEventListener('input', handleFilterAndSearch);
-    console.log("Search input listener attached:", !!searchInput);
-
     if(departmentFilter) departmentFilter.addEventListener('change', handleFilterAndSearch);
-    console.log("Department filter listener attached:", !!departmentFilter);
-
     if(startDateInput) startDateInput.addEventListener('change', handleFilterAndSearch);
-    console.log("Start date listener attached:", !!startDateInput);
-
     if(endDateInput) endDateInput.addEventListener('change', handleFilterAndSearch);
-    console.log("End date listener attached:", !!endDateInput);
-
     if(resetDateBtn) resetDateBtn.addEventListener('click', resetDateFilter);
-    console.log("Reset date listener attached:", !!resetDateBtn);
-    
     if(themeSwitcherBtn) themeSwitcherBtn.addEventListener('click', toggleTheme);
-    console.log("Theme switcher listener attached:", !!themeSwitcherBtn);
-
     if(navLinks && navLinks.length > 0) {
-        navLinks.forEach((link, index) => {
-            if (link) {
-                link.addEventListener('click', handleNavigation);
-            } else {
-                console.warn(`NavLink at index ${index} is null.`);
-            }
-        });
+        navLinks.forEach((link) => { if (link) link.addEventListener('click', handleNavigation); });
         console.log(`${navLinks.length} navigation listeners attached.`);
-    } else {
-        console.warn("No navLinks found to attach listeners.");
-    }
+    } else { console.warn("No navLinks found."); }
 
     // Initial Setup
     console.log("Running initial setup: loadTheme and fetchData. Current Time:", new Date().toLocaleTimeString());
