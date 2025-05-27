@@ -38,6 +38,9 @@
     --fc-today-button-text-dark: var(--text-color-dark);
     --fc-today-button-hover-bg-dark: #808B96;
 
+    --table-row-hover-light: #FFF9C4; /* لون ذهبي فاتح جداً أو بيج عند المرور */
+    --table-row-hover-dark: #4A4A4A;   /* رمادي أغمق قليلاً في الوضع الداكن */
+
 
     --sidebar-width: 240px;
     --topbar-height: 65px;
@@ -74,7 +77,7 @@ body.dark-mode .table-container, body.dark-mode .chart-container { background-co
 body.dark-mode th, body.dark-mode td { border-bottom: 1px solid var(--border-color-dark); }
 body.dark-mode thead th { background-color: var(--border-color-dark); color: var(--text-color-dark); }
 body.dark-mode tbody tr:nth-child(even) { background-color: #383e44; }
-body.dark-mode tbody tr:hover { background-color: #444; }
+body.dark-mode tbody tr:hover { background-color: var(--table-row-hover-dark); } /* Updated hover for dark */
 body.dark-mode .past-due td { opacity: 0.5; color: var(--text-muted-dark); }
 body.dark-mode .filter-container select { background-color: #555; border-color: var(--border-color-dark); color: white; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23C89638' viewBox='0 0 16 16'%3E%3Cpath fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3E%3C/svg%3E"); }
 body.dark-mode .pagination-container a { background-color: #444; color: var(--text-muted-dark); } 
@@ -153,7 +156,9 @@ th, td { padding: 8px 10px; text-align: right; border-bottom: 1px solid var(--bo
 thead th { background-color: #f1f3f5; font-weight: 700; color: var(--primary-dark-light); }
 tbody tr:nth-child(even) { background-color: #fdfdfd; }
 tbody tr { transition: background-color var(--transition-speed); }
-tbody tr:hover { background-color: #eef5ff; }
+tbody tr:hover { background-color: var(--table-row-hover-light); } /* UPDATED Table row hover */
+body.dark-mode tbody tr:hover { background-color: var(--table-row-hover-dark); }
+
 .past-due td { opacity: 0.7; } 
 .status-tag { padding: 3px 8px; border-radius: 10px; font-size: 0.7em; color: white; white-space: nowrap; font-weight: 600; text-transform: uppercase; }
 .status-due { background-color: var(--accent-orange); } 
@@ -195,14 +200,66 @@ body.dark-mode .modal-content h3 { color: var(--accent-gold); }
 .fc .fc-button-primary:not(.fc-today-button) { background-color: var(--accent-gold-muted); border-color: var(--accent-gold-muted); color: var(--primary-dark-light); }
 .fc .fc-button-primary:not(.fc-today-button):hover { background-color: var(--accent-gold); border-color: var(--accent-gold); color: white; }
 .fc .fc-button-primary:disabled { background-color: var(--text-muted-light); border-color: var(--text-muted-light); }
-.fc .fc-today-button { background-color: var(--fc-today-button-bg-light) !important; border-color: var(--fc-today-button-bg-light) !important; color: var(--fc-today-button-text-light) !important; }
-.fc .fc-today-button:hover { background-color: var(--fc-today-button-hover-bg-light) !important; border-color: var(--fc-today-button-hover-bg-light) !important;}
+
+/* Today Button Styling - UPDATED to Grey */
+.fc .fc-today-button { 
+    background-color: var(--fc-today-button-bg-light) !important; 
+    border-color: var(--fc-today-button-bg-light) !important; 
+    color: var(--fc-today-button-text-light) !important; 
+}
+.fc .fc-today-button:hover { 
+    background-color: var(--fc-today-button-hover-bg-light) !important; 
+    border-color: var(--fc-today-button-hover-bg-light) !important;
+}
+body.dark-mode .fc .fc-today-button {
+    background-color: var(--fc-today-button-bg-dark) !important;
+    border-color: var(--fc-today-button-bg-dark) !important;
+    color: var(--fc-today-button-text-dark) !important;
+}
+body.dark-mode .fc .fc-today-button:hover {
+    background-color: var(--fc-today-button-hover-bg-dark) !important;
+    border-color: var(--fc-today-button-hover-bg-dark) !important;
+}
+
 .fc-toolbar-title { color: var(--primary-dark-light); font-size: 1.4em !important; }
 .fc-daygrid-day-number, .fc-col-header-cell-cushion { color: var(--text-muted-light); text-decoration: none; }
-.fc .fc-daygrid-day-frame { transition: background-color var(--transition-speed); min-height: 80px; }
-.fc .fc-daygrid-day:not(.fc-day-today) .fc-daygrid-day-frame:hover { background-color: var(--calendar-hover-grey-light) !important; cursor: default; }
-body.dark-mode .fc .fc-daygrid-day:not(.fc-day-today) .fc-daygrid-day-frame:hover { background-color: var(--calendar-hover-grey-dark) !important;}
-.fc-day-today .fc-daygrid-day-frame { background-color: var(--accent-gold-muted) !important; opacity: 0.6; }
-.fc-day-today .fc-daygrid-day-frame:hover { background-color: var(--accent-gold-muted) !important; opacity: 0.7; }
+
+/* FullCalendar Day Cell Styling - UPDATED */
+.fc .fc-daygrid-day-frame { 
+    transition: background-color var(--transition-speed);
+    min-height: 80px; 
+}
+/* Ensure no week/row hover highlight from FullCalendar base or other general rules */
+.fc .fc-daygrid-body .fc-daygrid-week:hover td, /* More specific to week rows */
+.fc .fc-daygrid-body tr:hover td /* General table row within fc body */ {
+    background-color: transparent !important;
+}
+/* Grey hover for individual non-today day cells - target the frame */
+.fc-daygrid-day:not(.fc-day-today) .fc-daygrid-day-frame:hover {
+    background-color: var(--calendar-hover-grey-light) !important; 
+    cursor: default; 
+}
+body.dark-mode .fc-daygrid-day:not(.fc-day-today) .fc-daygrid-day-frame:hover {
+    background-color: var(--calendar-hover-grey-dark) !important;
+}
+
+/* Today's date cell - Light Gold */
+.fc-day-today .fc-daygrid-day-frame { 
+    background-color: var(--accent-gold-muted) !important; 
+    opacity: 0.6; 
+}
+/* Ensure today's highlight persists on hover and is not overridden by general day hover */
+.fc-day-today .fc-daygrid-day-frame:hover {
+    background-color: var(--accent-gold-muted) !important; 
+    opacity: 0.7; 
+}
+
+/* FullCalendar Event Styling */
 .fc-event { border-width: 0px !important; padding: 3px 5px !important; font-size: 0.8em !important; cursor: pointer; border-radius: 3px;}
-.fc-daygrid-event-harness > a.fc-event:hover, .fc-timegrid-event-harness > .fc-event:hover, .fc-list-event:hover { filter: brightness(1.05); transform: scale(1.02); transition: filter 0.2s, transform 0.2s;}
+.fc-daygrid-event-harness > a.fc-event:hover, 
+.fc-timegrid-event-harness > .fc-event:hover, 
+.fc-list-event:hover { 
+    filter: brightness(1.05); 
+    transform: scale(1.02);
+    transition: filter 0.2s, transform 0.2s;
+}
