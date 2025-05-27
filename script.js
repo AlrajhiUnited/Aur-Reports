@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-    console.log("DOM fully loaded and parsed");
+    console.log("SCRIPT.JS LOADED AND DOMCONTENTLOADED FIRED!");
 
     // --- DOM Elements ---
     const tableBody = document.getElementById('reports-table-body');
