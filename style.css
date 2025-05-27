@@ -28,8 +28,8 @@
     --accent-green: #F5F5F5; 
     --past-due-color: #95A5A6; 
 
-    --calendar-hover-grey-light: #E9ECEF; /* Grey for day hover */
-    --calendar-hover-grey-dark: #42474c; 
+    --calendar-hover-grey-light: #f0f0f0;
+    --calendar-hover-grey-dark: #484848;
     --fc-today-button-bg-light: #D6DBDF;
     --fc-today-button-text-light: var(--primary-dark-light);
     --fc-today-button-hover-bg-light: #AEB6BF;
@@ -192,80 +192,17 @@ body.dark-mode .modal-content h3 { color: var(--accent-gold); }
 
 /* --- FullCalendar Customizations --- */
 #calendar-placeholder { padding: 20px; background-color: var(--card-bg-light); border-radius: var(--border-radius); box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
-
-/* General FC buttons (Prev, Next, View Switchers) */
-.fc .fc-button-primary:not(.fc-today-button) { 
-    background-color: var(--accent-gold-muted); 
-    border-color: var(--accent-gold-muted); 
-    color: var(--primary-dark-light); 
-}
-.fc .fc-button-primary:not(.fc-today-button):hover {
-    background-color: var(--accent-gold); 
-    border-color: var(--accent-gold); 
-    color: white; 
-}
+.fc .fc-button-primary:not(.fc-today-button) { background-color: var(--accent-gold-muted); border-color: var(--accent-gold-muted); color: var(--primary-dark-light); }
+.fc .fc-button-primary:not(.fc-today-button):hover { background-color: var(--accent-gold); border-color: var(--accent-gold); color: white; }
 .fc .fc-button-primary:disabled { background-color: var(--text-muted-light); border-color: var(--text-muted-light); }
-
-/* Today Button Styling - UPDATED to Grey */
-.fc .fc-today-button { 
-    background-color: var(--fc-today-button-bg-light) !important; 
-    border-color: var(--fc-today-button-bg-light) !important; 
-    color: var(--fc-today-button-text-light) !important; 
-}
-.fc .fc-today-button:hover { 
-    background-color: var(--fc-today-button-hover-bg-light) !important; 
-    border-color: var(--fc-today-button-hover-bg-light) !important;
-}
-body.dark-mode .fc .fc-today-button {
-    background-color: var(--fc-today-button-bg-dark) !important;
-    border-color: var(--fc-today-button-bg-dark) !important;
-    color: var(--fc-today-button-text-dark) !important;
-}
-body.dark-mode .fc .fc-today-button:hover {
-    background-color: var(--fc-today-button-hover-bg-dark) !important;
-    border-color: var(--fc-today-button-hover-bg-dark) !important;
-}
-
+.fc .fc-today-button { background-color: var(--fc-today-button-bg-light) !important; border-color: var(--fc-today-button-bg-light) !important; color: var(--fc-today-button-text-light) !important; }
+.fc .fc-today-button:hover { background-color: var(--fc-today-button-hover-bg-light) !important; border-color: var(--fc-today-button-hover-bg-light) !important;}
 .fc-toolbar-title { color: var(--primary-dark-light); font-size: 1.4em !important; }
 .fc-daygrid-day-number, .fc-col-header-cell-cushion { color: var(--text-muted-light); text-decoration: none; }
-
-/* FullCalendar Day Cell Styling - UPDATED */
-.fc .fc-daygrid-day-frame { /* Target the frame inside the day cell */
-    transition: background-color var(--transition-speed);
-    min-height: 80px; 
-}
-/* Resetting any potential background on the main day cell (td) if FC adds it on week hover */
-.fc-daygrid-day:hover, .fc-daygrid-week:hover .fc-daygrid-day {
-    background-color: transparent !important; /* Attempt to prevent week hover */
-}
-/* Grey hover for individual non-today day cells */
-.fc-daygrid-day:not(.fc-day-today) .fc-daygrid-day-frame:hover {
-    background-color: var(--calendar-hover-grey-light) !important; 
-    cursor: default; 
-}
-body.dark-mode .fc-daygrid-day:not(.fc-day-today) .fc-daygrid-day-frame:hover {
-    background-color: var(--calendar-hover-grey-dark) !important;
-}
-
-/* Today's date cell - Light Gold */
-.fc-day-today .fc-daygrid-day-frame { 
-    background-color: var(--accent-gold-muted) !important; 
-    opacity: 0.6; 
-}
-/* Ensure today's highlight persists on hover and is not overridden by general day hover */
-.fc-day-today .fc-daygrid-day-frame:hover {
-    background-color: var(--accent-gold-muted) !important; 
-    opacity: 0.7; 
-}
-
-/* FullCalendar Event Styling */
+.fc .fc-daygrid-day-frame { transition: background-color var(--transition-speed); min-height: 80px; }
+.fc .fc-daygrid-day:not(.fc-day-today) .fc-daygrid-day-frame:hover { background-color: var(--calendar-hover-grey-light) !important; cursor: default; }
+body.dark-mode .fc .fc-daygrid-day:not(.fc-day-today) .fc-daygrid-day-frame:hover { background-color: var(--calendar-hover-grey-dark) !important;}
+.fc-day-today .fc-daygrid-day-frame { background-color: var(--accent-gold-muted) !important; opacity: 0.6; }
+.fc-day-today .fc-daygrid-day-frame:hover { background-color: var(--accent-gold-muted) !important; opacity: 0.7; }
 .fc-event { border-width: 0px !important; padding: 3px 5px !important; font-size: 0.8em !important; cursor: pointer; border-radius: 3px;}
-/* Remove hover background change from events */
-.fc-daygrid-event-harness > a.fc-event:hover, 
-.fc-timegrid-event-harness > .fc-event:hover, 
-.fc-list-event:hover { 
-    /* No background change, or explicitly set to its original color if possible */
-    /* A subtle shadow or brightness can be an alternative */
-    filter: brightness(1.05); /* Make it slightly brighter on hover */
-    /* box-shadow: inset 0 0 0 1px rgba(0,0,0,0.2); */
-}
+.fc-daygrid-event-harness > a.fc-event:hover, .fc-timegrid-event-harness > .fc-event:hover, .fc-list-event:hover { filter: brightness(1.05); transform: scale(1.02); transition: filter 0.2s, transform 0.2s;}
