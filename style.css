@@ -15,12 +15,12 @@
     /* Accent Colors */
     --accent-gold: #C89638; 
     --accent-gold-muted: #bd9a5f; 
-    --accent-blue-calendar-event: #AEC6CF; /* For Calendar "Upcoming" events */
-    --accent-orange-table-tag: #E67E22;   /* For Table "Due Today" tags */
+    --accent-blue-calendar-event: #AEC6CF; 
+    --accent-orange-table-tag: #E67E22;   
     --accent-red: #E74C3C;
-    --accent-green-calendar-event: #F5F5F5; /* For Calendar "Future" events */
-    --accent-green-table-tag: #5cb85c;     /* For Table "Future" tags */
-    --accent-blue-table-tag: #5bc0de;      /* For Table "Upcoming" tags */
+    --accent-green-event: #F5F5F5; 
+    --accent-green-table-tag: #5cb85c;     
+    --accent-blue-table-tag: #5bc0de;      
     --past-due-color: #95A5A6; 
 
     --calendar-hover-grey-light: rgba(222, 191, 138, 0.15); 
@@ -28,7 +28,7 @@
     --fc-today-button-text-light: var(--primary-dark-light);
     --fc-today-button-hover-bg-light: #AEB6BF;
 
-    --table-row-hover-light: rgba(222, 191, 138, 0.1); /* Lighter gold for table row hover */
+    --table-row-hover-light: rgba(222, 191, 138, 0.1); 
 
     --sidebar-width: 240px;
     --topbar-height: 65px;
@@ -52,7 +52,7 @@ body {
 .content-wrapper { padding: 20px; } 
 .button { padding: 10px 20px; border-radius: var(--border-radius); text-decoration: none; display: inline-block; font-weight: 600; transition: background-color var(--transition-speed), color var(--transition-speed); border: none; cursor: pointer; }
 .sidebar-header { text-align: center; margin-bottom: 20px; padding: 10px; }
-.sidebar-logo { max-width: 80%; padding: 10px 0; } /* Removed filter transition */
+.sidebar-logo { max-width: 80%; padding: 10px 0; }
 .sidebar ul { list-style: none; flex-grow: 1; }
 .sidebar ul li a { display: flex; align-items: center; padding: 15px 20px; text-decoration: none; color: var(--text-muted-light); transition: background-color var(--transition-speed), color var(--transition-speed); border-right: 4px solid transparent; }
 .sidebar ul li a i { margin-left: 15px; width: 20px; text-align: center; font-size: 1.1em; }
@@ -67,7 +67,7 @@ body {
 .top-bar { height: var(--topbar-height); background-color: var(--topbar-bg-light); border-bottom: 1px solid var(--border-color-light); position: fixed; top: 0; right: var(--sidebar-width); left: 0; display: flex; justify-content: flex-start; align-items: center; padding: 0 20px; transition: background-color var(--transition-speed), border-color var(--transition-speed); z-index: 10; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
 .page-title { font-size: 1.1em; font-weight: 600; color: var(--text-color-light); transition: color var(--transition-speed); flex-grow: 1; }
 .search-bar { padding: 8px 12px; border: 1px solid var(--border-color-light); border-radius: var(--border-radius); width: 280px; transition: all var(--transition-speed); margin-left: 15px; }
-.search-bar:focus { border-color: var(--accent-blue-table-tag); box-shadow: 0 0 5px rgba(52, 152, 219, 0.5); outline: none; } /* Used a table blue */
+.search-bar:focus { border-color: var(--accent-blue-table-tag); box-shadow: 0 0 5px rgba(52, 152, 219, 0.5); outline: none; }
 .top-bar-actions .icon-button { background: none; border: none; font-size: 1.2em; margin-left: 15px; cursor: pointer; color: var(--text-muted-light); transition: color var(--transition-speed); position: relative; }
 .icon-button:hover { color: var(--accent-gold); }
 .notification-dot { position: absolute; top: -3px; right: -5px; width: 8px; height: 8px; background-color: var(--accent-red); border-radius: 50%; display: block; }
@@ -80,7 +80,7 @@ body {
 .kpi-icon { font-size: 2em; color: var(--accent-gold); margin-bottom: 10px; display: block; }
 .kpi-card > * { position: relative; z-index: 2; }
 
-/* --- Controls & Filter (Light Mode) --- */
+/* --- Controls & Filter (Light Mode ONLY) --- */
 .controls-container { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; }
 .controls-container h3 { margin-bottom: 0; flex-grow: 1; font-size: 1.3em; }
 .filter-container { display: flex; align-items: center; position: relative; }
@@ -132,7 +132,7 @@ th, td { padding: 8px 10px; text-align: right; border-bottom: 1px solid var(--bo
 thead th { background-color: #f1f3f5; font-weight: 700; color: var(--primary-dark-light); }
 tbody tr:nth-child(even) { background-color: #fdfdfd; }
 tbody tr { transition: background-color var(--transition-speed); }
-tbody tr:hover { background-color: var(--table-row-hover-light); } 
+tbody tr:hover { background-color: var(--table-row-hover-light); } /* UPDATED Table row hover */
 .past-due td { opacity: 0.7; } 
 .status-tag { padding: 3px 8px; border-radius: 10px; font-size: 0.7em; color: white; white-space: nowrap; font-weight: 600; text-transform: uppercase; }
 .status-due { background-color: var(--accent-orange-table-tag); } 
@@ -167,7 +167,7 @@ td .icon-button:hover { color: var(--accent-gold); }
 .modal-button { background-color: var(--accent-gold); color: white; margin-top: 20px; font-size: 0.9em; }
 .modal-button:hover { background-color: var(--accent-gold-muted); color: var(--primary-dark-light); }
 
-/* --- FullCalendar Customizations --- */
+/* --- FullCalendar Customizations (Light Mode ONLY) --- */
 #calendar-placeholder { padding: 20px; background-color: var(--card-bg-light); border-radius: var(--border-radius); box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
 .fc .fc-button-primary:not(.fc-today-button) { background-color: var(--accent-gold-muted); border-color: var(--accent-gold-muted); color: var(--primary-dark-light); }
 .fc .fc-button-primary:not(.fc-today-button):hover { background-color: var(--accent-gold); border-color: var(--accent-gold); color: white; }
