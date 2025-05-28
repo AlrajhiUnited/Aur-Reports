@@ -27,10 +27,9 @@ const searchInput = document.getElementById('search-input');
 const departmentFilter = document.getElementById('department-filter');
 const startDateInput = document.getElementById('start-date');
 const endDateInput = document.getElementById('end-date');
-// const resetDateFilterButton = document.getElementById('reset-date-filter'); // Removed
 const notificationDot = document.getElementById('notification-dot');
 const kpiFilterIndicator = document.getElementById('kpi-filter-indicator');
-const resetAllFiltersButton = document.getElementById('reset-all-filters-btn'); // Renamed from clearKpiFilterButton
+const resetAllFiltersButton = document.getElementById('reset-all-filters-btn');
 const filterCurrentMonthButton = document.getElementById('filter-current-month');
 const filterNextMonthButton = document.getElementById('filter-next-month');
 
@@ -67,7 +66,7 @@ function getToday() {
 }
 
 function dateToYYYYMMDD(date) {
-    if (!date || !(date instanceof Date)) return ''; // Add check for valid date
+    if (!date || !(date instanceof Date)) return '';
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
@@ -287,32 +286,53 @@ function displayPagination() {
 
 function updateKPIs() {
     const today = getToday();
+    let reportsForKpiCalc = filteredReportsBase; // Start with base filtered reports
 
-    const nonPastDueReportsForKpi = filteredReportsBase.filter(r => !getReportStatusWithReference(r.dueDate, today).isPastDue);
-    const pastDueReportsForKpi = filteredReportsBase.filter(r => getReportStatusWithReference(r.dueDate, today).isPastDue);
-
-    kpiTotalReportsValue.textContent = nonPastDueReportsForKpi.length;
-
+    // If a date range is active (either manually or by month filter),
+    // KPIs like "Due Today", "Due Soon" should respect this range.
+    // "Total Reports" and "Past Due" are generally independent of the selected period for their core meaning.
     const startDateValue = startDateInput.value ? new Date(startDateInput.value) : null;
     const endDateValue = endDateInput.value ? new Date(endDateInput.value) : null;
     if (endDateValue) endDateValue.setHours(23, 59, 59, 999);
 
+    let reportsInSelectedPeriod = filteredReportsBase;
     if (startDateValue && endDateValue) {
-        const reportsInPeriodForKpi = nonPastDueReportsForKpi.filter(report => {
+        reportsInSelectedPeriod = filteredReportsBase.filter(report => {
             const dueDate = new Date(report.dueDate);
             return dueDate >= startDateValue && dueDate <= endDateValue;
         });
-        kpiPeriodReportsValue.textContent = reportsInPeriodForKpi.length;
+    }
+    
+    // "إجمالي التقارير" (KPI) now refers to non-past-due reports within the selected period if a period is set,
+    // or all non-past-due if no period is set.
+    let kpiTotalScope = (startDateValue && endDateValue) ? reportsInSelectedPeriod : filteredReportsBase;
+    const nonPastDueForTotalKpi = kpiTotalScope.filter(r => !getReportStatusWithReference(r.dueDate, today).isPastDue);
+    kpiTotalReportsValue.textContent = nonPastDueForTotalKpi.length;
+
+
+    // "إجمالي تقارير الفترة" specifically uses reports within the date range (non-past-due)
+    if (startDateValue && endDateValue) {
+        const nonPastDueInPeriod = reportsInSelectedPeriod.filter(r => !getReportStatusWithReference(r.dueDate, today).isPastDue);
+        kpiPeriodReportsValue.textContent = nonPastDueInPeriod.length;
     } else {
         kpiPeriodReportsValue.textContent = '-';
     }
 
-    kpiDueTodayValue.textContent = nonPastDueReportsForKpi.filter(r => diffInDays(r.dueDate, today) === 0).length;
-    kpiDueSoonValue.textContent = nonPastDueReportsForKpi.filter(r => {
+    // For "Due Today" and "Due Soon", use reports within the selected period (if any), then filter by status.
+    // And these should always be non-past-due.
+    let scopeForTimedKpis = ((startDateValue && endDateValue) ? reportsInSelectedPeriod : filteredReportsBase)
+                             .filter(r => !getReportStatusWithReference(r.dueDate, today).isPastDue);
+
+    kpiDueTodayValue.textContent = scopeForTimedKpis.filter(r => diffInDays(r.dueDate, today) === 0).length;
+    kpiDueSoonValue.textContent = scopeForTimedKpis.filter(r => {
         const diff = diffInDays(r.dueDate, today);
         return diff >= 0 && diff <= 2;
     }).length;
+    
+    // "تقارير منتهية" is always based on all filteredReportsBase, irrespective of selected period.
+    const pastDueReportsForKpi = filteredReportsBase.filter(r => getReportStatusWithReference(r.dueDate, today).isPastDue);
     kpiPastDueValue.textContent = pastDueReportsForKpi.length;
+
 
     const upcomingOrDueTodayForNotification = nonPastDueReportsForKpi.filter(r => {
         const diff = diffInDays(r.dueDate, today);
@@ -332,7 +352,6 @@ function updateKPIs() {
         kpiFilterIndicator.textContent = '';
         kpiFilterIndicator.style.display = 'none';
     }
-    // The reset all button is always visible now, so no need to toggle its display based on KPI filter
 }
 
 
@@ -341,7 +360,6 @@ function applyAllFiltersAndRender() {
     const selectedDepartment = departmentFilter.value;
     const today = getToday();
 
-    // 1. Base filtering (search, department)
     filteredReportsBase = allReports.filter(report => {
         const matchesSearch = searchTerm === '' ||
             report.title.toLowerCase().includes(searchTerm) ||
@@ -350,21 +368,33 @@ function applyAllFiltersAndRender() {
         return matchesSearch && matchesDepartment;
     });
 
-    // 2. Determine reports for Charts/Calendar (respects KPI 'past_due' or shows non-past-due)
     if (activeKpiFilterType === 'past_due') {
         reportsForChartsAndCalendar = filteredReportsBase.filter(r => getReportStatusWithReference(r.dueDate, today).isPastDue);
     } else {
         reportsForChartsAndCalendar = filteredReportsBase.filter(r => !getReportStatusWithReference(r.dueDate, today).isPastDue);
     }
 
-    // 3. Determine reports for Table display
-    let tempReportsForTable = reportsForChartsAndCalendar; // Start with chart/calendar data (already status-filtered)
+    let tempReportsForTable = [...reportsForChartsAndCalendar]; // Start with status-filtered reports
 
-    // Apply specific KPI logic if a KPI filter (other than past_due/total_reports which are implicitly handled by reportsForChartsAndCalendar) is active
-    if (activeKpiFilterType && activeKpiFilterType !== 'past_due' && activeKpiFilterType !== 'total_reports') {
-        if (activeKpiFilterType === 'period_reports') {
-            // This KPI type relies on date inputs, so we don't filter further by KPI here,
-            // date filter below will handle it.
+    // Apply date range filter (from date inputs, possibly set by month filter)
+    const startDateValue = startDateInput.value ? new Date(startDateInput.value) : null;
+    const endDateValue = endDateInput.value ? new Date(endDateInput.value) : null;
+    if (endDateValue) endDateValue.setHours(23, 59, 59, 999);
+
+    if (startDateValue && endDateValue) {
+        tempReportsForTable = tempReportsForTable.filter(report => {
+            const dueDate = new Date(report.dueDate);
+            return dueDate >= startDateValue && dueDate <= endDateValue;
+        });
+    }
+    
+    // If a KPI filter is active, apply it ON TOP of the (potentially) date-filtered set
+    if (activeKpiFilterType) {
+        if (activeKpiFilterType === 'total_reports') {
+            // tempReportsForTable is already correct (non-past-due, possibly date-filtered)
+        } else if (activeKpiFilterType === 'period_reports') {
+            // This KPI relies on date inputs, which are already applied above.
+            // So, tempReportsForTable is already correct.
         } else if (activeKpiFilterType === 'due_today') {
             tempReportsForTable = tempReportsForTable.filter(r => diffInDays(r.dueDate, today) === 0);
         } else if (activeKpiFilterType === 'due_soon') {
@@ -372,32 +402,24 @@ function applyAllFiltersAndRender() {
                 const diff = diffInDays(r.dueDate, today);
                 return diff >= 0 && diff <= 2;
             });
+        } else if (activeKpiFilterType === 'past_due') {
+            // If 'past_due' KPI is active, override tempReportsForTable to show only past_due from the base filter
+            tempReportsForTable = filteredReportsBase.filter(r => getReportStatusWithReference(r.dueDate, today).isPastDue);
+            // And apply date range if present
+            if (startDateValue && endDateValue) {
+                tempReportsForTable = tempReportsForTable.filter(report => {
+                    const dueDate = new Date(report.dueDate);
+                    return dueDate >= startDateValue && dueDate <= endDateValue;
+                });
+            }
         }
-    }
-
-    // Apply date range filter (from date inputs, possibly set by month filter)
-    // This applies UNLESS a KPI filter is active that *overrides* date (like 'due_today', 'due_soon').
-    // 'period_reports' KPI specifically uses the date range.
-    // 'total_reports' and 'past_due' (for table) are already correctly set in tempReportsForTable.
-    const startDateValue = startDateInput.value ? new Date(startDateInput.value) : null;
-    const endDateValue = endDateInput.value ? new Date(endDateInput.value) : null;
-    if (endDateValue) endDateValue.setHours(23, 59, 59, 999);
-
-    if (startDateValue && endDateValue) {
-        // If a KPI filter is active that is NOT 'period_reports', this date range acts as an *additional* filter.
-        // If 'period_reports' is active, this IS the primary filter for that KPI.
-        // If no KPI filter is active, this is the primary date filter.
-        tempReportsForTable = tempReportsForTable.filter(report => {
-            const dueDate = new Date(report.dueDate);
-            return dueDate >= startDateValue && dueDate <= endDateValue;
-        });
     }
     
     reportsForDisplayInTable = tempReportsForTable;
 
     currentPage = 1;
     populateTable();
-    updateKPIs();
+    updateKPIs(); // updateKPIs will now correctly use date range for relevant KPIs
     updateMonthFilterButtonsUI();
 
     const activeViewId = document.querySelector('.view.active')?.id;
@@ -406,7 +428,7 @@ function applyAllFiltersAndRender() {
 }
 
 
-function resetAllFilters() { // Renamed from resetDateFilter
+function resetAllFilters() {
     searchInput.value = '';
     departmentFilter.value = '';
     startDateInput.value = '';
@@ -414,7 +436,6 @@ function resetAllFilters() { // Renamed from resetDateFilter
     activeMonthFilter = null;
     activeKpiFilterType = null;
     activeKpiFilterName = '';
-    // No need to call updateMonthFilterButtonsUI() here as applyAllFiltersAndRender will do it.
     applyAllFiltersAndRender();
 }
 
@@ -423,24 +444,18 @@ function handleKpiCardClick(event) {
     const kpiType = clickedCard.dataset.kpiType;
     const kpiName = clickedCard.querySelector('.kpi-label').textContent;
 
-    if (activeKpiFilterType === kpiType) { // Toggle off
+    if (activeKpiFilterType === kpiType) {
         activeKpiFilterType = null;
         activeKpiFilterName = '';
     } else {
         activeKpiFilterType = kpiType;
         activeKpiFilterName = kpiName;
-        // If a KPI is selected, it takes precedence over month filter for table display logic
-        // but month filter's date inputs remain for when KPI filter is cleared.
-        // We don't clear activeMonthFilter here, applyAllFiltersAndRender handles precedence.
     }
+    // When a KPI filter is clicked, the month filter's date inputs are still respected
+    // by applyAllFiltersAndRender.
     applyAllFiltersAndRender();
 }
 
-function clearActiveKpiFilter() { // This function might be redundant if resetAllFilters is used
-    activeKpiFilterType = null;
-    activeKpiFilterName = '';
-    applyAllFiltersAndRender();
-}
 
 function handleMonthFilterClick(monthType) {
     if (activeMonthFilter === monthType) {
@@ -449,9 +464,9 @@ function handleMonthFilterClick(monthType) {
         endDateInput.value = '';
     } else {
         activeMonthFilter = monthType;
-        const today = getToday(); // Use systemBaseDate for month calculations
-        let year = today.getFullYear();
-        let month = today.getMonth();
+        const todayForMonthCalc = getToday(); // Use systemBaseDate for consistent month calculation
+        let year = todayForMonthCalc.getFullYear();
+        let month = todayForMonthCalc.getMonth();
 
         if (monthType === 'current') {
             // current month is already set
@@ -469,9 +484,8 @@ function handleMonthFilterClick(monthType) {
         startDateInput.value = dateToYYYYMMDD(firstDay);
         endDateInput.value = dateToYYYYMMDD(lastDay);
     }
-    // Month filter selection implies the user wants to see data for this month,
-    // it can work in conjunction with an active KPI filter.
-    // applyAllFiltersAndRender will handle the combination.
+    // Month filter selection works in conjunction with active KPI filters.
+    // applyAllFiltersAndRender will handle the combined logic.
     applyAllFiltersAndRender();
 }
 
@@ -612,10 +626,9 @@ document.addEventListener('DOMContentLoaded', () => {
         applyAllFiltersAndRender();
     });
     
-    resetAllFiltersButton?.addEventListener('click', resetAllFilters); // Changed from resetDateFilterButton
+    resetAllFiltersButton?.addEventListener('click', resetAllFilters);
 
     Object.values(kpiCards).forEach(card => card?.addEventListener('click', handleKpiCardClick));
-    // clearKpiFilterButton is now resetAllFiltersButton, listener assigned above.
 
     filterCurrentMonthButton?.addEventListener('click', () => handleMonthFilterClick('current'));
     filterNextMonthButton?.addEventListener('click', () => handleMonthFilterClick('next'));
