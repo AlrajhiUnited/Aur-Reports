@@ -12,7 +12,9 @@
     --accent-gold: #C89638;
     --accent-gold-muted: #bd9a5f;
     --accent-gold-hover: rgba(200, 150, 56, 0.1);
-    --accent-gold-text-on-gold-bg: #FFFFFF;
+    --accent-gold-text-on-gold-bg: #FFFFFF; /* White text for gold background */
+    --timeline-item-border-default: #a37d2c; /* Darker gold for border */
+
 
     --accent-blue-calendar-event: #AEC6CF;
     --accent-orange-table-tag: #E67E22; /* مستحق اليوم في الجدول */
@@ -406,6 +408,10 @@ body {
     border-radius: 4px;
     cursor: pointer;
     transition: color 0.3s, border-color 0.3s, background-color 0.3s;
+    margin-right: 5px; /* Space between action buttons */
+}
+.action-button:last-child {
+    margin-right: 0;
 }
 .action-button i {
     font-size: 0.9em;
@@ -529,7 +535,7 @@ body {
 
 .fc-event, .fc-event-dot {
     background-color: var(--accent-gold) !important;
-    border-color: var(--accent-gold-muted) !important;
+    border-color: var(--timeline-item-border-default) !important; /* Darker gold border */
     color: var(--accent-gold-text-on-gold-bg) !important;
     padding: 3px 5px;
 }
@@ -600,63 +606,43 @@ body {
 
 #visualization-timeline {
     width: 100%;
-    height: 450px; /* Adjust height as needed */
+    height: 450px;
     border: 1px solid var(--border-color-light);
     border-radius: 4px;
-    background-color: #fff; /* White background for timeline itself */
+    background-color: #fff;
 }
 /* Vis.js Timeline Item Styling */
 .vis-item {
-    border-color: var(--accent-gold-muted);
-    background-color: var(--accent-gold-hover);
-    color: var(--primary-dark-light);
+    border: 1px solid var(--timeline-item-border-default) !important; /* Default border */
+    background-color: var(--accent-gold) !important; /* Gold background for all items */
+    color: var(--accent-gold-text-on-gold-bg) !important; /* White text */
     font-size: 0.8em !important;
     padding: 5px;
     border-radius: 3px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
 }
 .vis-item.vis-selected {
-    border-color: var(--accent-red);
-    background-color: rgba(200, 150, 56, 0.3);
+    border-color: var(--accent-red) !important; /* Keep selection distinct */
+    box-shadow: 0 0 5px var(--accent-red);
 }
-/* Status-based coloring for timeline items */
-.vis-item.timeline-item-past-due {
-    background-color: #e9e9e9; /* Lighter version of past-due-color */
-    border-color: var(--past-due-color);
-    color: #586061;
-}
-.vis-item.timeline-item-due-today {
-    background-color: rgba(230, 126, 34, 0.2); /* Lighter accent-orange-table-tag */
-    border-color: var(--accent-orange-table-tag);
-    color: #a05615;
-}
-.vis-item.timeline-item-due-soon {
-    background-color: rgba(91, 192, 222, 0.2); /* Lighter accent-blue-table-tag */
-    border-color: var(--accent-blue-table-tag);
-    color: #31708f;
-}
-.vis-item.timeline-item-upcoming {
-    background-color: rgba(92, 184, 92, 0.15); /* Lighter accent-green-table-tag */
-    border-color: var(--accent-green-table-tag);
-    color: #3c763d;
-}
+
+/* Remove specific status background colors, keep border for subtle distinction if needed */
+.vis-item.timeline-item-past-due { border-color: var(--past-due-color) !important; }
+.vis-item.timeline-item-due-today { border-color: var(--accent-orange-table-tag) !important; }
+.vis-item.timeline-item-due-soon { border-color: var(--accent-blue-table-tag) !important; }
+.vis-item.timeline-item-upcoming { border-color: var(--accent-green-table-tag) !important; }
+
 .vis-item .vis-item-content {
     padding: 2px 4px;
 }
 .vis-timeline .vis-time-axis .vis-grid.vis-odd {
     background: #fdfdfd;
 }
-.vis-custom-time { /* For the "Time Travel" reference line */
+.vis-custom-time {
     background-color: var(--accent-red);
     width: 2px;
-    z-index: 10; /* Ensure it's above items */
+    z-index: 10;
 }
-.vis-custom-time.major {
-    background-color: var(--accent-red);
-}
-.vis-custom-time.minor {
-    background-color: var(--accent-red);
-}
-
 
 /* --- Modal Styles --- */
 .modal {
