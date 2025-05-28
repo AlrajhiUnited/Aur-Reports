@@ -56,27 +56,37 @@ body {
 }
 
 .sidebar-header {
-    padding: 20px 20px 10px 20px; /* Reduced bottom padding */
-    text-align: center;
-    /* border-bottom: 1px solid var(--border-color-light); Removed to merge with badge container */
+    padding: 20px 20px 15px 20px; /* Adjusted padding */
+    text-align: center; /* Center the logo initially */
+    display: flex;
+    flex-direction: column;
+    align-items: center; /* Center items horizontally */
 }
 
 #company-logo {
-    max-width: 180px; /* Slightly larger logo */
+    max-width: 200px; /* Increased logo size */
     height: auto;
-    margin-bottom: 5px; /* Reduced space below logo */
+    margin-bottom: 10px; /* Space between logo and badge */
 }
 
 .sidebar-badge-container {
-    padding: 5px 20px 15px 20px; /* Adjusted padding */
-    text-align: center;
-    /* border-bottom: 1px solid var(--border-color-light); Removed separator line */
+    padding: 0; /* Remove padding if badge is directly under logo */
+    text-align: right; /* Align badge to the right */
+    width: 100%; /* Ensure container takes width for alignment */
+    display: flex; /* Use flex to control badge alignment */
+    justify-content: flex-end; /* Align badge to the right (end in LTR, start in RTL if items are reversed) */
+    padding-right: calc((100% - 90px) / 2); /* Attempt to center a 90px badge */
+    padding-left: calc((100% - 90px) / 2); /* Attempt to center a 90px badge */
+    box-sizing: border-box;
 }
 
 #workplace-badge {
-    max-width: 120px; /* Smaller badge size */
+    max-width: 90px; /* Significantly smaller badge size */
     height: auto;
-    border-radius: 6px;
+    border-radius: 4px; /* Slightly smaller radius */
+    display: block; /* To allow margin auto or flex alignment to work */
+    /* margin-right: auto; /* Pushes to the right if parent is flex and centered */
+    /* margin-left: 20px; /* Example to push from left if needed */
 }
 
 
@@ -85,7 +95,8 @@ body {
     padding: 15px 0;
     margin: 0;
     flex-grow: 1;
-    border-top: 1px solid var(--border-color-light); /* Add separator above nav if badge container has no border */
+    border-top: 1px solid var(--border-color-light); /* Separator above nav */
+    margin-top: 15px; /* Space above the nav list after badge */
 }
 
 .sidebar-nav .nav-item a {
@@ -681,12 +692,15 @@ body {
     }
      .sidebar-header {
         padding: 15px;
+        align-items: center; /* Center items in column */
     }
     #company-logo {
-        max-width: 150px; /* Adjusted for smaller screens */
+        max-width: 160px; /* Adjust for mobile */
+        margin-bottom: 10px;
     }
     .sidebar-badge-container {
-        padding: 10px 15px;
+        padding: 0 15px 10px 15px; /* Adjust padding */
+        /* No need for justify-content if parent is centering */
     }
     #workplace-badge {
         max-width: 100px; /* Smaller badge on mobile */
@@ -696,7 +710,8 @@ body {
         overflow-x: auto;
         padding: 0 10px;
         border-bottom: 1px solid var(--border-color-light);
-        border-top: none; /* Remove top border if badge container has no border */
+        border-top: 1px solid var(--border-color-light); /* Ensure separator */
+        margin-top: 0; /* Remove margin if border is on nav */
     }
     .sidebar-nav .nav-item {
         flex-shrink: 0;
@@ -816,9 +831,9 @@ body {
         margin-bottom: 10px;
     }
      #company-logo {
-        max-width: 130px;
+        max-width: 140px; /* Further adjust for very small screens */
     }
     #workplace-badge {
-        max-width: 90px;
+        max-width: 80px; /* Further adjust for very small screens */
     }
 }
