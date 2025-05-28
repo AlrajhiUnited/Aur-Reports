@@ -262,9 +262,10 @@ function updateKPIs() {
     if (activeKpiFilterType && kpiCards[activeKpiFilterType]) {
         kpiCards[activeKpiFilterType].classList.add('kpi-active-filter');
     }
+    // Ensure kpiFilterIndicator is not displayed
     if (kpiFilterIndicator) {
-        kpiFilterIndicator.textContent = activeKpiFilterType ? `(فلتر KPI: ${activeKpiFilterName})` : '';
-        kpiFilterIndicator.style.display = activeKpiFilterType ? 'inline' : 'none';
+        kpiFilterIndicator.textContent = ''; // Clear any previous text
+        kpiFilterIndicator.style.display = 'none'; // Ensure it's hidden
     }
     if (clearKpiFilterButton) {
         clearKpiFilterButton.style.display = activeKpiFilterType ? 'block' : 'none';
