@@ -12,9 +12,7 @@
     --accent-gold: #C89638;
     --accent-gold-muted: #bd9a5f;
     --accent-gold-hover: rgba(200, 150, 56, 0.1);
-    --accent-gold-text-on-gold-bg: #FFFFFF; /* White text for gold background */
-    --timeline-item-border-default: #a37d2c; /* Darker gold for border */
-
+    --accent-gold-text-on-gold-bg: #FFFFFF;
 
     --accent-blue-calendar-event: #AEC6CF;
     --accent-orange-table-tag: #E67E22; /* مستحق اليوم في الجدول */
@@ -402,24 +400,23 @@ body {
 
 .action-button {
     background: none;
-    border: 1px solid var(--text-muted-light);
+    border: none; /* Removed border */
     color: var(--text-muted-light);
-    padding: 6px 10px;
+    padding: 6px; /* Adjusted padding for borderless */
     border-radius: 4px;
     cursor: pointer;
-    transition: color 0.3s, border-color 0.3s, background-color 0.3s;
-    margin-right: 5px; /* Space between action buttons */
+    transition: color 0.3s, background-color 0.3s;
+    margin-right: 8px; /* Increased space between action buttons */
 }
 .action-button:last-child {
     margin-right: 0;
 }
 .action-button i {
-    font-size: 0.9em;
+    font-size: 1em; /* Slightly larger icon */
 }
 .action-button:hover {
     color: var(--accent-gold);
-    border-color: var(--accent-gold);
-    background-color: var(--accent-gold-hover);
+    background-color: var(--accent-gold-hover); /* Keep background hover */
 }
 
 /* --- Pagination Styles --- */
@@ -535,7 +532,7 @@ body {
 
 .fc-event, .fc-event-dot {
     background-color: var(--accent-gold) !important;
-    border-color: var(--timeline-item-border-default) !important; /* Darker gold border */
+    border-color: var(--accent-gold-muted) !important;
     color: var(--accent-gold-text-on-gold-bg) !important;
     padding: 3px 5px;
 }
@@ -546,102 +543,6 @@ body {
 }
 .fc-event:hover {
    opacity: 0.85;
-}
-
-/* --- Timeline Section Styles --- */
-#timeline-section {
-    background-color: var(--card-bg-light);
-    padding: 20px;
-    border-radius: 8px;
-    border: 1px solid var(--border-color-light);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.05);
-}
-.timeline-controls {
-    margin-bottom: 15px;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    align-items: center;
-}
-.timeline-controls button {
-    background-color: var(--accent-gold);
-    color: white;
-    border: none;
-    padding: 8px 12px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-family: var(--font-family-base);
-    font-size: 0.85rem;
-    transition: background-color 0.3s;
-}
-.timeline-controls button:hover {
-    background-color: var(--accent-gold-muted);
-}
-.timeline-controls button i {
-    margin-left: 5px;
-}
-
-.time-travel-control {
-    margin-bottom: 20px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
-}
-.time-travel-control label {
-    font-size: 0.9rem;
-    color: var(--text-muted-light);
-}
-.time-travel-control input[type="date"] {
-    padding: 6px 10px;
-    border: 1px solid var(--border-color-light);
-    border-radius: 4px;
-    font-family: var(--font-family-base);
-}
-#time-travel-display {
-    font-size: 0.9rem;
-    color: var(--primary-dark-light);
-    font-weight: bold;
-}
-
-#visualization-timeline {
-    width: 100%;
-    height: 450px;
-    border: 1px solid var(--border-color-light);
-    border-radius: 4px;
-    background-color: #fff;
-}
-/* Vis.js Timeline Item Styling */
-.vis-item {
-    border: 1px solid var(--timeline-item-border-default) !important; /* Default border */
-    background-color: var(--accent-gold) !important; /* Gold background for all items */
-    color: var(--accent-gold-text-on-gold-bg) !important; /* White text */
-    font-size: 0.8em !important;
-    padding: 5px;
-    border-radius: 3px;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-}
-.vis-item.vis-selected {
-    border-color: var(--accent-red) !important; /* Keep selection distinct */
-    box-shadow: 0 0 5px var(--accent-red);
-}
-
-/* Remove specific status background colors, keep border for subtle distinction if needed */
-.vis-item.timeline-item-past-due { border-color: var(--past-due-color) !important; }
-.vis-item.timeline-item-due-today { border-color: var(--accent-orange-table-tag) !important; }
-.vis-item.timeline-item-due-soon { border-color: var(--accent-blue-table-tag) !important; }
-.vis-item.timeline-item-upcoming { border-color: var(--accent-green-table-tag) !important; }
-
-.vis-item .vis-item-content {
-    padding: 2px 4px;
-}
-.vis-timeline .vis-time-axis .vis-grid.vis-odd {
-    background: #fdfdfd;
-}
-.vis-custom-time {
-    background-color: var(--accent-red);
-    width: 2px;
-    z-index: 10;
 }
 
 /* --- Modal Styles --- */
@@ -850,20 +751,6 @@ body {
     #reports-table th,
     #reports-table td {
         white-space: normal;
-    }
-    .timeline-controls {
-        flex-direction: column;
-        align-items: stretch;
-    }
-    .timeline-controls button {
-        width: 100%;
-    }
-    .time-travel-control {
-        flex-direction: column;
-        align-items: stretch;
-    }
-    .time-travel-control input[type="date"] {
-        width: 100%;
     }
 }
 
