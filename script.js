@@ -27,10 +27,10 @@ const searchInput = document.getElementById('search-input');
 const departmentFilter = document.getElementById('department-filter');
 const startDateInput = document.getElementById('start-date');
 const endDateInput = document.getElementById('end-date');
-const resetDateFilterButton = document.getElementById('reset-date-filter');
+// const resetDateFilterButton = document.getElementById('reset-date-filter'); // Removed
 const notificationDot = document.getElementById('notification-dot');
 const kpiFilterIndicator = document.getElementById('kpi-filter-indicator');
-const clearKpiFilterButton = document.getElementById('clear-kpi-filter');
+const resetAllFiltersButton = document.getElementById('reset-all-filters-btn'); // Renamed from clearKpiFilterButton
 const filterCurrentMonthButton = document.getElementById('filter-current-month');
 const filterNextMonthButton = document.getElementById('filter-next-month');
 
@@ -67,6 +67,7 @@ function getToday() {
 }
 
 function dateToYYYYMMDD(date) {
+    if (!date || !(date instanceof Date)) return ''; // Add check for valid date
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
@@ -207,7 +208,7 @@ function populateTable() {
             const row = reportsTableBody.insertRow();
             const statusInfo = getReportStatusWithReference(report.dueDate, getToday());
 
-            row.insertCell().textContent = index + 1; // Page-specific numbering
+            row.insertCell().textContent = index + 1;
 
             row.insertCell().textContent = report.department;
             row.insertCell().textContent = report.title;
@@ -331,9 +332,7 @@ function updateKPIs() {
         kpiFilterIndicator.textContent = '';
         kpiFilterIndicator.style.display = 'none';
     }
-    if (clearKpiFilterButton) {
-        clearKpiFilterButton.style.display = activeKpiFilterType ? 'block' : 'none';
-    }
+    // The reset all button is always visible now, so no need to toggle its display based on KPI filter
 }
 
 
@@ -342,6 +341,7 @@ function applyAllFiltersAndRender() {
     const selectedDepartment = departmentFilter.value;
     const today = getToday();
 
+    // 1. Base filtering (search, department)
     filteredReportsBase = allReports.filter(report => {
         const matchesSearch = searchTerm === '' ||
             report.title.toLowerCase().includes(searchTerm) ||
@@ -350,68 +350,55 @@ function applyAllFiltersAndRender() {
         return matchesSearch && matchesDepartment;
     });
 
+    // 2. Determine reports for Charts/Calendar (respects KPI 'past_due' or shows non-past-due)
     if (activeKpiFilterType === 'past_due') {
         reportsForChartsAndCalendar = filteredReportsBase.filter(r => getReportStatusWithReference(r.dueDate, today).isPastDue);
     } else {
         reportsForChartsAndCalendar = filteredReportsBase.filter(r => !getReportStatusWithReference(r.dueDate, today).isPastDue);
     }
 
-    if (activeKpiFilterType) {
-        switch (activeKpiFilterType) {
-            case 'total_reports':
-                reportsForDisplayInTable = reportsForChartsAndCalendar;
-                break;
-            case 'period_reports':
-                const startDateKpi = startDateInput.value ? new Date(startDateInput.value) : null;
-                const endDateKpi = endDateInput.value ? new Date(endDateInput.value) : null;
-                if (endDateKpi) endDateKpi.setHours(23, 59, 59, 999);
+    // 3. Determine reports for Table display
+    let tempReportsForTable = reportsForChartsAndCalendar; // Start with chart/calendar data (already status-filtered)
 
-                if (startDateKpi && endDateKpi) {
-                    reportsForDisplayInTable = reportsForChartsAndCalendar.filter(report => {
-                        const dueDate = new Date(report.dueDate);
-                        return dueDate >= startDateKpi && dueDate <= endDateKpi;
-                    });
-                } else {
-                    reportsForDisplayInTable = reportsForChartsAndCalendar;
-                }
-                break;
-            case 'due_today':
-                reportsForDisplayInTable = reportsForChartsAndCalendar.filter(r => diffInDays(r.dueDate, today) === 0);
-                break;
-            case 'due_soon':
-                reportsForDisplayInTable = reportsForChartsAndCalendar.filter(r => {
-                    const diff = diffInDays(r.dueDate, today);
-                    return diff >= 0 && diff <= 2;
-                });
-                break;
-            case 'past_due':
-                reportsForDisplayInTable = reportsForChartsAndCalendar;
-                break;
-            default:
-                reportsForDisplayInTable = reportsForChartsAndCalendar;
-                break;
-        }
-    } else { // No KPI filter active, use date inputs or month filter
-        // If a month filter is active, it has already set the date inputs
-        const startDateValue = startDateInput.value ? new Date(startDateInput.value) : null;
-        const endDateValue = endDateInput.value ? new Date(endDateInput.value) : null;
-        if (endDateValue) endDateValue.setHours(23, 59, 59, 999);
-
-        if (startDateValue && endDateValue) {
-            reportsForDisplayInTable = reportsForChartsAndCalendar.filter(report => {
-                const dueDate = new Date(report.dueDate);
-                return dueDate >= startDateValue && dueDate <= endDateValue;
+    // Apply specific KPI logic if a KPI filter (other than past_due/total_reports which are implicitly handled by reportsForChartsAndCalendar) is active
+    if (activeKpiFilterType && activeKpiFilterType !== 'past_due' && activeKpiFilterType !== 'total_reports') {
+        if (activeKpiFilterType === 'period_reports') {
+            // This KPI type relies on date inputs, so we don't filter further by KPI here,
+            // date filter below will handle it.
+        } else if (activeKpiFilterType === 'due_today') {
+            tempReportsForTable = tempReportsForTable.filter(r => diffInDays(r.dueDate, today) === 0);
+        } else if (activeKpiFilterType === 'due_soon') {
+            tempReportsForTable = tempReportsForTable.filter(r => {
+                const diff = diffInDays(r.dueDate, today);
+                return diff >= 0 && diff <= 2;
             });
-        } else {
-            reportsForDisplayInTable = reportsForChartsAndCalendar;
         }
     }
+
+    // Apply date range filter (from date inputs, possibly set by month filter)
+    // This applies UNLESS a KPI filter is active that *overrides* date (like 'due_today', 'due_soon').
+    // 'period_reports' KPI specifically uses the date range.
+    // 'total_reports' and 'past_due' (for table) are already correctly set in tempReportsForTable.
+    const startDateValue = startDateInput.value ? new Date(startDateInput.value) : null;
+    const endDateValue = endDateInput.value ? new Date(endDateInput.value) : null;
+    if (endDateValue) endDateValue.setHours(23, 59, 59, 999);
+
+    if (startDateValue && endDateValue) {
+        // If a KPI filter is active that is NOT 'period_reports', this date range acts as an *additional* filter.
+        // If 'period_reports' is active, this IS the primary filter for that KPI.
+        // If no KPI filter is active, this is the primary date filter.
+        tempReportsForTable = tempReportsForTable.filter(report => {
+            const dueDate = new Date(report.dueDate);
+            return dueDate >= startDateValue && dueDate <= endDateValue;
+        });
+    }
+    
+    reportsForDisplayInTable = tempReportsForTable;
 
     currentPage = 1;
     populateTable();
     updateKPIs();
     updateMonthFilterButtonsUI();
-
 
     const activeViewId = document.querySelector('.view.active')?.id;
     if (activeViewId === 'analytics-section') renderAnalyticsCharts();
@@ -419,11 +406,15 @@ function applyAllFiltersAndRender() {
 }
 
 
-function resetDateFilter() {
+function resetAllFilters() { // Renamed from resetDateFilter
+    searchInput.value = '';
+    departmentFilter.value = '';
     startDateInput.value = '';
     endDateInput.value = '';
-    activeMonthFilter = null; // Also reset active month filter
-    updateMonthFilterButtonsUI();
+    activeMonthFilter = null;
+    activeKpiFilterType = null;
+    activeKpiFilterName = '';
+    // No need to call updateMonthFilterButtonsUI() here as applyAllFiltersAndRender will do it.
     applyAllFiltersAndRender();
 }
 
@@ -432,37 +423,38 @@ function handleKpiCardClick(event) {
     const kpiType = clickedCard.dataset.kpiType;
     const kpiName = clickedCard.querySelector('.kpi-label').textContent;
 
-    if (activeKpiFilterType === kpiType) {
+    if (activeKpiFilterType === kpiType) { // Toggle off
         activeKpiFilterType = null;
         activeKpiFilterName = '';
     } else {
         activeKpiFilterType = kpiType;
         activeKpiFilterName = kpiName;
-        // Clicking a KPI filter should clear any active month filter
-        activeMonthFilter = null; 
+        // If a KPI is selected, it takes precedence over month filter for table display logic
+        // but month filter's date inputs remain for when KPI filter is cleared.
+        // We don't clear activeMonthFilter here, applyAllFiltersAndRender handles precedence.
     }
     applyAllFiltersAndRender();
 }
 
-function clearActiveKpiFilter() {
+function clearActiveKpiFilter() { // This function might be redundant if resetAllFilters is used
     activeKpiFilterType = null;
     activeKpiFilterName = '';
     applyAllFiltersAndRender();
 }
 
 function handleMonthFilterClick(monthType) {
-    if (activeMonthFilter === monthType) { // Clicked the same active month filter again
+    if (activeMonthFilter === monthType) {
         activeMonthFilter = null;
-        startDateInput.value = ''; // Clear date inputs
+        startDateInput.value = '';
         endDateInput.value = '';
     } else {
         activeMonthFilter = monthType;
-        const today = getToday();
+        const today = getToday(); // Use systemBaseDate for month calculations
         let year = today.getFullYear();
-        let month = today.getMonth(); // 0-11
+        let month = today.getMonth();
 
         if (monthType === 'current') {
-            // Current month
+            // current month is already set
         } else if (monthType === 'next') {
             month += 1;
             if (month > 11) {
@@ -472,14 +464,14 @@ function handleMonthFilterClick(monthType) {
         }
         
         const firstDay = new Date(year, month, 1);
-        const lastDay = new Date(year, month + 1, 0); // Day 0 of next month is last day of current
+        const lastDay = new Date(year, month + 1, 0);
 
         startDateInput.value = dateToYYYYMMDD(firstDay);
         endDateInput.value = dateToYYYYMMDD(lastDay);
     }
-    // Clicking a month filter should clear any active KPI filter
-    activeKpiFilterType = null; 
-    activeKpiFilterName = '';
+    // Month filter selection implies the user wants to see data for this month,
+    // it can work in conjunction with an active KPI filter.
+    // applyAllFiltersAndRender will handle the combination.
     applyAllFiltersAndRender();
 }
 
@@ -610,19 +602,20 @@ document.addEventListener('DOMContentLoaded', () => {
     searchInput?.addEventListener('input', applyAllFiltersAndRender);
     departmentFilter?.addEventListener('change', applyAllFiltersAndRender);
     startDateInput?.addEventListener('change', () => {
-        activeMonthFilter = null; // Clear month filter if date is manually changed
+        activeMonthFilter = null;
         updateMonthFilterButtonsUI();
         applyAllFiltersAndRender();
     });
     endDateInput?.addEventListener('change', () => {
-        activeMonthFilter = null; // Clear month filter if date is manually changed
+        activeMonthFilter = null;
         updateMonthFilterButtonsUI();
         applyAllFiltersAndRender();
     });
-    resetDateFilterButton?.addEventListener('click', resetDateFilter);
+    
+    resetAllFiltersButton?.addEventListener('click', resetAllFilters); // Changed from resetDateFilterButton
 
     Object.values(kpiCards).forEach(card => card?.addEventListener('click', handleKpiCardClick));
-    clearKpiFilterButton?.addEventListener('click', clearActiveKpiFilter);
+    // clearKpiFilterButton is now resetAllFiltersButton, listener assigned above.
 
     filterCurrentMonthButton?.addEventListener('click', () => handleMonthFilterClick('current'));
     filterNextMonthButton?.addEventListener('click', () => handleMonthFilterClick('next'));
