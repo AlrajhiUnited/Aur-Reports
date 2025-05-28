@@ -9,7 +9,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css" xintegrity="sha512-KfkfwYDsLkIlwQp6LFnl8zNdLGxu9YAA1QvwINks4PhcElQSvqcyVLLD9aMhXd13uQjoXtEKNosOWaZqXgel0g==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link href='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css' rel='stylesheet' />
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis-timeline-graph2d.min.css" rel="stylesheet" type="text/css" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
@@ -29,10 +28,7 @@
                 <li class="nav-item" data-view="calendar-section">
                     <a href="#"><i class="fas fa-calendar-alt"></i> <span>التقويم</span></a>
                 </li>
-                <li class="nav-item" data-view="timeline-section">
-                    <a href="#"><i class="fas fa-stream"></i> <span>الخط الزمني</span></a>
-                </li>
-            </ul>
+                </ul>
             <div class="sidebar-filter-section">
                 <h3>تصفية حسب التاريخ</h3>
                 <div class="date-filter-group">
@@ -146,23 +142,7 @@
                     <div id="calendar"></div>
                 </section>
 
-                <section id="timeline-section" class="view">
-                    <h2>الخط الزمني و "السفر عبر الزمن"</h2>
-                    <div class="timeline-controls">
-                        <button id="timeline-zoom-in"><i class="fas fa-search-plus"></i> تكبير</button>
-                        <button id="timeline-zoom-out"><i class="fas fa-search-minus"></i> تصغير</button>
-                        <button id="timeline-prev"><i class="fas fa-chevron-right"></i> الفترة السابقة</button> <button id="timeline-next"><i class="fas fa-chevron-left"></i> الفترة التالية</button> <button id="timeline-today">الذهاب إلى اليوم المرجعي</button>
-                    </div>
-                    <div class="time-travel-control">
-                        <label for="time-travel-date-picker">السفر عبر الزمن (تغيير التاريخ المرجعي):</label>
-                        <input type="date" id="time-travel-date-picker">
-                        <span id="time-travel-display">التاريخ المرجعي: --</span>
-                    </div>
-                    <div id="visualization-timeline">
-                         <div id="timeline-loading-message" style="text-align: center; padding: 20px; display: none;">جاري تحميل الخط الزمني...</div>
-                    </div>
-                </section>
-            </div>
+                </div>
         </main>
     </div>
 
@@ -180,7 +160,6 @@
 
     <script src='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js'></script>
     <script src='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/locales/ar.js'></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis-timeline-graph2d.min.js"></script>
     <script src="script.js"></script>
 </body>
 </html>
