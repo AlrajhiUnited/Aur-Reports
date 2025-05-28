@@ -10,16 +10,16 @@
     --primary-dark-light: #2C3E50;
 
     --accent-gold: #C89638;
-    --accent-gold-muted: #bd9a5f;
+    --accent-gold-muted: #bd9a5f; /* Used for active filter states */
     --accent-gold-hover: rgba(200, 150, 56, 0.1);
     --accent-gold-text-on-gold-bg: #FFFFFF;
 
     --accent-blue-calendar-event: #AEC6CF;
-    --accent-orange-table-tag: #E67E22; /* مستحق اليوم في الجدول */
+    --accent-orange-table-tag: #E67E22;
     --accent-red: #E74C3C;
-    --accent-green-table-tag: #5cb85c; /* قادم في الجدول */
-    --accent-blue-table-tag: #5bc0de; /* قادم قريباً في الجدول */
-    --past-due-color: #95A5A6; /* منتهي في الجدول والتقويم */
+    --accent-green-table-tag: #5cb85c;
+    --accent-blue-table-tag: #5bc0de;
+    --past-due-color: #95A5A6;
     --calendar-today-bg: rgba(189, 154, 95, 0.6);
 
     --font-family-base: 'Cairo', sans-serif;
@@ -141,7 +141,6 @@ body {
 .sidebar-filter-section .date-filter-group {
     margin-bottom: 8px;
 }
-/* Removed margin-bottom from reset-date-filter as it's removed */
 
 .filter-divider {
     border: none;
@@ -153,7 +152,7 @@ body {
     display: flex;
     flex-direction: column;
     gap: 8px;
-    margin-bottom: 15px; /* Space before reset all button */
+    margin-bottom: 15px;
 }
 
 .month-filter-btn {
@@ -183,13 +182,13 @@ body {
 }
 
 .month-filter-btn.active {
-    background-color: var(--accent-gold);
+    background-color: var(--accent-gold-muted); /* Consistent active color */
     color: var(--accent-gold-text-on-gold-bg);
-    border-color: var(--accent-gold);
+    border-color: var(--accent-gold-muted);
     font-weight: bold;
 }
 
-.reset-all-btn { /* Style for the new reset all button */
+.reset-all-btn {
     background-color: var(--text-muted-light) !important;
     color: white !important;
     border: none;
@@ -200,7 +199,7 @@ body {
     width: 100%;
     cursor: pointer;
     transition: background-color 0.3s;
-    margin-top: 10px; /* Space above it */
+    margin-top: 10px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -221,7 +220,7 @@ body {
     color: var(--text-muted-light);
 }
 
-.sidebar-filter-section input[type="date"] { /* Keep this for date inputs */
+.sidebar-filter-section input[type="date"] {
     width: 100%;
     padding: 9px 10px;
     border: 1px solid var(--border-color-light);
@@ -381,7 +380,7 @@ body {
 .kpi-card.kpi-active-filter {
     background-color: var(--accent-gold-muted) !important;
     color: white;
-    border-color: var(--accent-gold);
+    border-color: var(--accent-gold-muted);
 }
 .kpi-card.kpi-active-filter .kpi-icon,
 .kpi-card.kpi-active-filter .kpi-label,
@@ -477,23 +476,23 @@ body {
 
 .action-button {
     background: none;
-    border: none; /* Removed border */
+    border: none; 
     color: var(--text-muted-light);
-    padding: 6px; /* Adjusted padding for borderless */
+    padding: 6px; 
     border-radius: 4px;
     cursor: pointer;
     transition: color 0.3s, background-color 0.3s;
-    margin-right: 8px; /* Increased space between action buttons */
+    margin-right: 8px; 
 }
 .action-button:last-child {
     margin-right: 0;
 }
 .action-button i {
-    font-size: 1em; /* Slightly larger icon */
+    font-size: 1em; 
 }
 .action-button:hover {
     color: var(--accent-gold);
-    background-color: var(--accent-gold-hover); /* Keep background hover */
+    background-color: var(--accent-gold-hover); 
 }
 
 /* --- Pagination Styles --- */
@@ -798,7 +797,7 @@ body {
         flex-grow: 1;
         min-width: calc(50% - 5px);
     }
-    .reset-all-btn { /* Ensure reset all button is full width on smaller screens if date inputs stack */
+    .reset-all-btn { 
         flex-basis: 100%;
     }
 
