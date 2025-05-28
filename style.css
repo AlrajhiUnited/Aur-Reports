@@ -1,892 +1,649 @@
-/* --- General Styles & Variables --- */
-:root {
-    --bg-color-light: #F8F9FA;
-    --sidebar-bg-light: #FFFFFF;
-    --topbar-bg-light: #FFFFFF;
-    --card-bg-light: #FFFFFF;
-    --text-color-light: #212529;
-    --text-muted-light: #6C757D;
-    --border-color-light: #E9ECEF;
-    --primary-dark-light: #2C3E50;
+// Global variables
+let allReports = [];
+let filteredReportsBase = []; // After search and department filter, includes ALL statuses
+let reportsForChartsAndCalendar = []; // Derived from filteredReportsBase, excluding/including past_due based on activeKpiFilterType
+let reportsForDisplayInTable = []; // Derived from reportsForChartsAndCalendar or a more specific KPI subset
 
-    --accent-gold: #C89638;
-    --accent-gold-muted: #bd9a5f;
-    --accent-gold-hover: rgba(200, 150, 56, 0.1);
-    --accent-gold-text-on-gold-bg: #FFFFFF;
+let currentPage = 1;
+const reportsPerPage = 15;
+const systemBaseDate = new Date('2025-05-27'); // System's "today"
+const recipientEmail = 'shamdan@aur.com.sa';
 
-    --accent-blue-calendar-event: #AEC6CF;
-    --accent-orange-table-tag: #E67E22; /* مستحق اليوم في الجدول */
-    --accent-red: #E74C3C;
-    --accent-green-table-tag: #5cb85c; /* قادم في الجدول */
-    --accent-blue-table-tag: #5bc0de; /* قادم قريباً في الجدول */
-    --past-due-color: #95A5A6; /* منتهي في الجدول والتقويم */
-    --calendar-today-bg: rgba(189, 154, 95, 0.6);
+// Chart instances
+let departmentChartInstance = null;
+let frequencyChartInstance = null;
+let calendarInstance = null;
 
-    --font-family-base: 'Cairo', sans-serif;
+// State for KPI filter
+let activeKpiFilterType = null;
+let activeKpiFilterName = '';
+let activeMonthFilter = null; // 'current', 'next', or null
+
+// DOM Elements
+const loadingMessage = document.getElementById('loading-message');
+const reportsTableBody = document.getElementById('reports-table-body');
+const paginationControls = document.getElementById('pagination-controls');
+const searchInput = document.getElementById('search-input');
+const departmentFilter = document.getElementById('department-filter');
+const startDateInput = document.getElementById('start-date');
+const endDateInput = document.getElementById('end-date');
+const notificationDot = document.getElementById('notification-dot');
+const kpiFilterIndicator = document.getElementById('kpi-filter-indicator');
+const resetAllFiltersButton = document.getElementById('reset-all-filters-btn');
+const filterCurrentMonthButton = document.getElementById('filter-current-month');
+const filterNextMonthButton = document.getElementById('filter-next-month');
+
+
+// KPI Card Elements & Values
+const kpiTotalReportsValue = document.getElementById('kpi-total-reports-value');
+const kpiPeriodReportsValue = document.getElementById('kpi-period-reports-value');
+const kpiDueTodayValue = document.getElementById('kpi-due-today-value');
+const kpiDueSoonValue = document.getElementById('kpi-due-soon-value');
+const kpiPastDueValue = document.getElementById('kpi-past-due-value');
+
+const kpiCards = {
+    total_reports: document.getElementById('kpi-total-reports-card'),
+    period_reports: document.getElementById('kpi-period-reports-card'),
+    due_today: document.getElementById('kpi-due-today-card'),
+    due_soon: document.getElementById('kpi-due-soon-card'),
+    past_due: document.getElementById('kpi-past-due-card')
+};
+
+// Modal Elements
+const eventModal = document.getElementById('event-modal');
+const modalCloseButton = eventModal.querySelector('.close-button');
+const modalTitle = document.getElementById('modal-title');
+const modalDepartment = document.getElementById('modal-department');
+const modalFrequency = document.getElementById('modal-frequency');
+const modalDueDate = document.getElementById('modal-due-date');
+const modalStatus = document.getElementById('modal-status');
+const modalEmailButton = document.getElementById('modal-email-button');
+let currentModalReport = null;
+
+// --- Utility Functions ---
+function getToday() {
+    return new Date(systemBaseDate.getFullYear(), systemBaseDate.getMonth(), systemBaseDate.getDate());
 }
 
-body {
-    font-family: var(--font-family-base);
-    margin: 0;
-    background-color: var(--bg-color-light);
-    color: var(--text-color-light);
-    line-height: 1.6;
-    direction: rtl;
-}
-
-.dashboard-container {
-    display: flex;
-    min-height: 100vh;
-}
-
-/* --- Sidebar Styles --- */
-.sidebar {
-    width: 260px;
-    background-color: var(--sidebar-bg-light);
-    border-left: 1px solid var(--border-color-light);
-    display: flex;
-    flex-direction: column;
-    position: fixed;
-    right: 0;
-    top: 0;
-    bottom: 0;
-    overflow-y: auto;
-    padding: 0;
-    box-shadow: 2px 0 5px rgba(0,0,0,0.05);
-}
-
-.sidebar-header {
-    padding: 20px 15px 10px 15px;
-    text-align: center;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-}
-
-#company-logo {
-    max-width: 220px;
-    width: calc(100% - 20px);
-    height: auto;
-    margin-bottom: 8px;
-    display: block;
-}
-
-.sidebar-badge-container {
-    width: 100%;
-    padding: 0 20px 15px 20px;
-    box-sizing: border-box;
-    text-align: right;
-}
-
-#workplace-badge {
-    max-width: 80px;
-    height: auto;
-    border-radius: 4px;
-    display: inline-block;
+function dateToYYYYMMDD(date) {
+    if (!date || !(date instanceof Date)) return '';
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
 }
 
 
-.sidebar-nav {
-    list-style: none;
-    padding: 15px 0;
-    margin: 0;
-    flex-grow: 1;
-    border-top: 1px solid var(--border-color-light);
-    margin-top: 0;
+function diffInDays(date1Str, date2) {
+    const d1 = new Date(date1Str);
+    const d1StartOfDay = new Date(d1.getFullYear(), d1.getMonth(), d1.getDate());
+    return Math.round((d1StartOfDay - date2) / (1000 * 60 * 60 * 24));
 }
 
-.sidebar-nav .nav-item a {
-    display: flex;
-    align-items: center;
-    padding: 12px 20px;
-    color: var(--text-muted-light);
-    text-decoration: none;
-    transition: background-color 0.3s, color 0.3s, border-right-color 0.3s;
-    font-size: 1rem;
-    border-right: 3px solid transparent;
+function getReportStatusWithReference(dueDateString, referenceDate) {
+    const refDateStartOfDay = new Date(referenceDate.getFullYear(), referenceDate.getMonth(), referenceDate.getDate());
+    const diff = diffInDays(dueDateString, refDateStartOfDay);
+
+    if (diff < 0) return { text: 'منتهي', class: 'status-past-due', isPastDue: true };
+    if (diff === 0) return { text: 'مستحق اليوم', class: 'status-due-today', isPastDue: false };
+    if (diff > 0 && diff <= 2) return { text: 'قادم قريباً', class: 'status-due-soon', isPastDue: false };
+    return { text: 'قادم', class: 'status-upcoming', isPastDue: false };
 }
 
-.sidebar-nav .nav-item a i {
-    margin-left: 12px;
-    width: 20px;
-    text-align: center;
-    color: var(--accent-gold-muted);
-    transition: color 0.3s;
+function generateICSContent(report) {
+    const formatDateForICS = (dateString) => {
+        const date = new Date(dateString);
+        const year = date.getUTCFullYear();
+        const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+        const day = String(date.getUTCDate()).padStart(2, '0');
+        return `${year}${month}${day}`;
+    };
+
+    const now = new Date();
+    const dtstamp = `${now.getUTCFullYear()}${String(now.getUTCMonth() + 1).padStart(2, '0')}${String(now.getUTCDate()).padStart(2, '0')}T${String(now.getUTCHours()).padStart(2, '0')}${String(now.getUTCMinutes()).padStart(2, '0')}${String(now.getUTCSeconds()).padStart(2, '0')}Z`;
+    const uid = `report-${report.id}-${Date.now()}@aur.com.sa`;
+    const dtstart = formatDateForICS(report.dueDate);
+
+    let icsContent = [
+        'BEGIN:VCALENDAR',
+        'VERSION:2.0',
+        'PRODID:-//AUR//Report Dashboard//EN',
+        'BEGIN:VEVENT',
+        `UID:${uid}`,
+        `DTSTAMP:${dtstamp}`,
+        `DTSTART;VALUE=DATE:${dtstart}`,
+        `SUMMARY:تذكير بتقرير: ${report.title}`,
+        `DESCRIPTION:الجهة: ${report.department}\\nفترة التكرار: ${report.frequency}\\nتاريخ الاستحقاق: ${report.dueDate}`,
+        'STATUS:TENTATIVE',
+        'TRANSP:TRANSPARENT',
+        'BEGIN:VALARM',
+        'ACTION:DISPLAY',
+        'DESCRIPTION:تذكير بالتقرير: ' + report.title,
+        'TRIGGER;VALUE=DATE-TIME:' + dtstart + 'T090000',
+        'END:VALARM',
+        'END:VEVENT',
+        'END:VCALENDAR'
+    ].join('\r\n');
+    return icsContent;
 }
 
-.sidebar-nav .nav-item.active a,
-.sidebar-nav .nav-item a:hover {
-    background-color: var(--accent-gold-hover);
-    color: var(--accent-gold);
-    border-right-color: var(--accent-gold);
-}
-.sidebar-nav .nav-item.active a i,
-.sidebar-nav .nav-item a:hover i {
-    color: var(--accent-gold);
-}
-
-
-.sidebar-filter-section {
-    padding: 20px;
-    border-top: 1px solid var(--border-color-light);
-    margin-top: auto;
+function downloadICSFile(icsContent, reportTitle) {
+    const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8;' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    const filename = `تذكير-${reportTitle.replace(/[\s\/]+/g, '_')}.ics`;
+    link.setAttribute("download", filename);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
 }
 
-.sidebar-filter-section h3 {
-    font-size: 0.9rem;
-    color: var(--text-color-light);
-    margin-top: 0;
-    margin-bottom: 10px;
-}
-.sidebar-filter-section .date-filter-group {
-    margin-bottom: 8px;
-}
-/* Removed margin-bottom from reset-date-filter as it's removed */
+async function fetchData() {
+    console.log('Fetching data...');
+    if (loadingMessage) loadingMessage.style.display = 'block';
+    if (reportsTableBody) reportsTableBody.innerHTML = '';
 
-.filter-divider {
-    border: none;
-    border-top: 1px solid var(--border-color-light);
-    margin: 15px 0;
-}
+    try {
+        const response = await fetch('./data.json');
+        if (!response.ok) {
+            throw new Error(`Network response was not ok: ${response.statusText} (URL: ${response.url})`);
+        }
+        const data = await response.json();
+        console.log('Data fetched successfully:', data.length, 'reports');
 
-.month-filter-buttons {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    margin-bottom: 15px; /* Space before reset all button */
-}
+        allReports = data.map(item => ({
+            id: item[0],
+            department: item[1],
+            title: item[2],
+            frequency: item[3],
+            dueDate: item[4],
+        }));
 
-.month-filter-btn {
-    background-color: #FFFFFF;
-    border: 1px solid var(--border-color-light);
-    color: var(--accent-gold-muted);
-    padding: 8px 15px;
-    border-radius: 20px;
-    font-family: var(--font-family-base);
-    font-size: 0.85rem;
-    width: 100%;
-    text-align: center;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-.month-filter-btn i {
-    margin-left: 8px;
-}
+        populateDepartmentFilter();
+        applyAllFiltersAndRender();
 
-.month-filter-btn:hover {
-    background-color: var(--accent-gold-hover);
-    color: var(--accent-gold);
-    border-color: var(--accent-gold-muted);
-}
-
-.month-filter-btn.active {
-    background-color: var(--accent-gold);
-    color: var(--accent-gold-text-on-gold-bg);
-    border-color: var(--accent-gold);
-    font-weight: bold;
-}
-
-.reset-all-btn { /* Style for the new reset all button */
-    background-color: var(--text-muted-light) !important;
-    color: white !important;
-    border: none;
-    padding: 9px 10px;
-    border-radius: 4px;
-    font-family: var(--font-family-base);
-    font-size: 0.9rem;
-    width: 100%;
-    cursor: pointer;
-    transition: background-color 0.3s;
-    margin-top: 10px; /* Space above it */
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-.reset-all-btn i {
-    margin-left: 8px;
-}
-
-.reset-all-btn:hover {
-    background-color: var(--primary-dark-light) !important;
-}
-
-
-.date-filter-group label {
-    display: block;
-    font-size: 0.85rem;
-    margin-bottom: 5px;
-    color: var(--text-muted-light);
-}
-
-.sidebar-filter-section input[type="date"] { /* Keep this for date inputs */
-    width: 100%;
-    padding: 9px 10px;
-    border: 1px solid var(--border-color-light);
-    border-radius: 4px;
-    font-family: var(--font-family-base);
-    font-size: 0.85rem;
-    box-sizing: border-box;
-}
-
-
-/* --- Main Content Styles --- */
-.main-content {
-    flex-grow: 1;
-    padding: 0;
-    margin-right: 260px;
-    display: flex;
-    flex-direction: column;
-    background-color: var(--bg-color-light);
-}
-
-/* --- Top Bar Styles --- */
-.top-bar {
-    background-color: var(--topbar-bg-light);
-    padding: 15px 25px;
-    border-bottom: 1px solid var(--border-color-light);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-    position: sticky;
-    top: 0;
-    z-index: 900;
-}
-
-.top-bar h1 {
-    margin: 0;
-    font-size: 1.5rem;
-    color: var(--text-color-light);
-}
-
-.top-bar-controls {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-}
-
-.top-bar-controls input[type="search"] {
-    padding: 8px 12px;
-    border: 1px solid var(--border-color-light);
-    border-radius: 20px;
-    font-family: var(--font-family-base);
-    font-size: 0.9rem;
-    width: 250px;
-}
-.top-bar-controls input[type="search"]:focus {
-    outline: none;
-    border-color: var(--accent-gold);
-    box-shadow: 0 0 0 0.2rem var(--accent-gold-hover);
-}
-
-.filter-container {
-    position: relative;
-}
-
-#department-filter {
-    padding: 8px 30px 8px 12px;
-    border: 1px solid var(--border-color-light);
-    border-radius: 20px;
-    font-family: var(--font-family-base);
-    font-size: 0.9rem;
-    background-color: white;
-    cursor: pointer;
-    appearance: none;
-    -webkit-appearance: none;
-    -moz-appearance: none;
-    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23C89638' width='18px' height='18px'%3e%3cpath d='M7 10l5 5 5-5z'/%3e%3c/svg%3e");
-    background-repeat: no-repeat;
-    background-position: left 8px center;
-    min-width: 150px;
-}
-#department-filter:focus {
-     outline: none;
-    border-color: var(--accent-gold);
-    box-shadow: 0 0 0 0.2rem var(--accent-gold-hover);
-}
-
-#notifications-btn {
-    background: none;
-    border: none;
-    color: var(--text-muted-light);
-    font-size: 1.2rem;
-    cursor: pointer;
-    position: relative;
-    padding: 5px;
-}
-#notifications-btn:hover {
-    color: var(--accent-gold);
-}
-
-.notification-dot {
-    position: absolute;
-    top: 0px;
-    right: 0px;
-    width: 8px;
-    height: 8px;
-    background-color: var(--accent-red);
-    border-radius: 50%;
-    border: 1px solid white;
-}
-
-/* --- Content Wrapper & View Sections --- */
-.content-wrapper {
-    padding: 25px;
-    flex-grow: 1;
-    overflow-y: auto;
-}
-
-.view {
-    display: none;
-}
-.view.active {
-    display: block;
-}
-
-.view h2 {
-    font-size: 1.8rem;
-    margin-bottom: 20px;
-    color: var(--primary-dark-light);
-    border-bottom: 2px solid var(--accent-gold);
-    padding-bottom: 10px;
-    display: inline-block;
-}
-
-/* --- KPI Card Styles --- */
-.kpi-cards-container {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 20px;
-    margin-bottom: 30px;
-}
-
-.kpi-card {
-    background-color: var(--card-bg-light);
-    padding: 20px;
-    border-radius: 8px;
-    border: 1px solid var(--border-color-light);
-    display: flex;
-    align-items: center;
-    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out, background-color 0.2s;
-    cursor: pointer;
-}
-.kpi-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 8px 15px rgba(0,0,0,0.08);
-    background-color: var(--accent-gold-hover);
-}
-.kpi-card.kpi-active-filter {
-    background-color: var(--accent-gold-muted) !important;
-    color: white;
-    border-color: var(--accent-gold);
-}
-.kpi-card.kpi-active-filter .kpi-icon,
-.kpi-card.kpi-active-filter .kpi-label,
-.kpi-card.kpi-active-filter .kpi-value {
-    color: white !important;
-}
-.kpi-card.kpi-active-filter .kpi-icon {
-     background-color: rgba(255,255,255,0.2);
-}
-
-
-.kpi-icon {
-    font-size: 1.8rem;
-    color: var(--accent-gold);
-    margin-left: 15px;
-    padding: 10px;
-    background-color: var(--accent-gold-hover);
-    border-radius: 50%;
-    width: 45px;
-    height: 45px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: color 0.2s, background-color 0.2s;
-}
-
-.kpi-info .kpi-value {
-    display: block;
-    font-size: 1.7rem;
-    font-weight: bold;
-    color: var(--text-color-light);
-    transition: color 0.2s;
-}
-
-.kpi-info .kpi-label {
-    font-size: 0.85rem;
-    color: var(--text-muted-light);
-    transition: color 0.2s;
-}
-
-/* --- Table Styles --- */
-.table-container {
-    background-color: var(--card-bg-light);
-    padding: 20px;
-    border-radius: 8px;
-    border: 1px solid var(--border-color-light);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.05);
-    overflow-x: auto;
-}
-
-#reports-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-bottom: 20px;
-}
-
-#reports-table th,
-#reports-table td {
-    padding: 8px 10px;
-    text-align: right;
-    border-bottom: 1px solid var(--border-color-light);
-    font-size: 0.9rem;
-    white-space: nowrap;
-}
-
-#reports-table th {
-    background-color: #f9f9f9;
-    font-weight: bold;
-    color: var(--primary-dark-light);
-    position: sticky;
-    top: 0;
-    z-index: 10;
-}
-#reports-table tbody tr:hover {
-    background-color: var(--accent-gold-hover);
-}
-
-.status-tag {
-    padding: 4px 8px;
-    border-radius: 12px;
-    font-size: 0.75rem;
-    font-weight: bold;
-    color: white;
-    display: inline-block;
-    min-width: 80px;
-    text-align: center;
-}
-
-.status-past-due { background-color: var(--past-due-color); }
-.status-due-today { background-color: var(--accent-orange-table-tag); }
-.status-due-soon { background-color: var(--accent-blue-table-tag); }
-.status-upcoming { background-color: var(--accent-green-table-tag); }
-
-.action-button {
-    background: none;
-    border: none; /* Removed border */
-    color: var(--text-muted-light);
-    padding: 6px; /* Adjusted padding for borderless */
-    border-radius: 4px;
-    cursor: pointer;
-    transition: color 0.3s, background-color 0.3s;
-    margin-right: 8px; /* Increased space between action buttons */
-}
-.action-button:last-child {
-    margin-right: 0;
-}
-.action-button i {
-    font-size: 1em; /* Slightly larger icon */
-}
-.action-button:hover {
-    color: var(--accent-gold);
-    background-color: var(--accent-gold-hover); /* Keep background hover */
-}
-
-/* --- Pagination Styles --- */
-#pagination-controls {
-    text-align: center;
-    margin-top: 20px;
-}
-#pagination-controls button {
-    background-color: transparent;
-    border: 1px solid var(--border-color-light);
-    color: var(--text-muted-light);
-    padding: 8px 12px;
-    margin: 0 3px;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: background-color 0.3s, color 0.3s, border-color 0.3s;
-}
-#pagination-controls button:hover,
-#pagination-controls button.active {
-    background-color: var(--accent-gold);
-    color: white;
-    border-color: var(--accent-gold);
-}
-#pagination-controls button:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
-/* --- Charts Section Styles --- */
-.charts-container {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 20px;
-}
-@media (max-width: 992px) {
-    .charts-container {
-        grid-template-columns: 1fr;
+    } catch (error) {
+        console.error('Error fetching or parsing data:', error);
+        if (loadingMessage) loadingMessage.textContent = `حدث خطأ أثناء تحميل البيانات: ${error.message}. يرجى التأكد من وجود ملف data.json في المسار الصحيح.`;
+    } finally {
+        if (loadingMessage) loadingMessage.style.display = 'none';
     }
 }
 
-.chart-card {
-    background-color: var(--card-bg-light);
-    padding: 20px;
-    border-radius: 8px;
-    border: 1px solid var(--border-color-light);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.05);
-    min-height: 350px;
-    display: flex;
-    flex-direction: column;
+function populateDepartmentFilter() {
+    if (!departmentFilter) return;
+    const departments = [...new Set(allReports.map(report => report.department))].sort((a, b) => a.localeCompare(b, 'ar'));
+    departmentFilter.innerHTML = '<option value="">كل الجهات</option>';
+    departments.forEach(dept => {
+        const option = document.createElement('option');
+        option.value = dept;
+        option.textContent = dept;
+        departmentFilter.appendChild(option);
+    });
 }
-.chart-card h3 {
-    margin-top: 0;
-    margin-bottom: 15px;
-    font-size: 1.1rem;
-    color: var(--primary-dark-light);
-    text-align: center;
+
+function populateTable() {
+    if (!reportsTableBody) return;
+    reportsTableBody.innerHTML = '';
+
+    const startIndex = (currentPage - 1) * reportsPerPage;
+    const endIndex = startIndex + reportsPerPage;
+    const paginatedReports = reportsForDisplayInTable.slice(startIndex, endIndex);
+
+    if (paginatedReports.length === 0) {
+        const row = reportsTableBody.insertRow();
+        const cell = row.insertCell();
+        cell.colSpan = 7;
+        cell.textContent = activeKpiFilterType === 'past_due' ? `لا توجد تقارير منتهية تطابق البحث الحالي.` :
+                           activeKpiFilterType ? `لا توجد تقارير تطابق فلتر (${activeKpiFilterName}) والبحث الحالي (مع استبعاد المنتهية).` :
+                           'لا توجد تقارير (غير منتهية) تطابق معايير البحث أو التصفية الحالية.';
+        cell.style.textAlign = 'center';
+        cell.style.padding = '20px';
+    } else {
+        paginatedReports.forEach((report, index) => {
+            const row = reportsTableBody.insertRow();
+            const statusInfo = getReportStatusWithReference(report.dueDate, getToday());
+
+            row.insertCell().textContent = index + 1;
+
+            row.insertCell().textContent = report.department;
+            row.insertCell().textContent = report.title;
+            row.insertCell().textContent = report.frequency;
+            row.insertCell().textContent = report.dueDate;
+
+            const statusCell = row.insertCell();
+            const statusTag = document.createElement('span');
+            statusTag.className = `status-tag ${statusInfo.class}`;
+            statusTag.textContent = statusInfo.text;
+            statusCell.appendChild(statusTag);
+
+            const actionsCell = row.insertCell();
+            actionsCell.style.whiteSpace = 'nowrap';
+
+            const emailButton = document.createElement('button');
+            emailButton.className = 'action-button';
+            emailButton.innerHTML = '<i class="fas fa-envelope"></i>';
+            emailButton.title = "إرسال بريد إلكتروني";
+            emailButton.setAttribute('aria-label', `إرسال بريد بخصوص ${report.title}`);
+            emailButton.onclick = () => {
+                const subject = `بخصوص تقرير: ${report.title}`;
+                const body = `السلام عليكم،\n\nيرجى الاطلاع على تقرير "${report.title}".\n\nمع وافر التحية والتقدير.`;
+                window.location.href = `mailto:${recipientEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+            };
+            actionsCell.appendChild(emailButton);
+
+            const calendarButton = document.createElement('button');
+            calendarButton.className = 'action-button';
+            calendarButton.innerHTML = '<i class="far fa-calendar-plus"></i>';
+            calendarButton.title = "إضافة تنبيه للتقويم";
+            calendarButton.setAttribute('aria-label', `إضافة تنبيه لتقرير ${report.title} إلى التقويم`);
+            calendarButton.onclick = () => {
+                const icsContent = generateICSContent(report);
+                downloadICSFile(icsContent, report.title);
+            };
+            actionsCell.appendChild(calendarButton);
+        });
+    }
+    displayPagination();
 }
-.chart-card canvas {
-    flex-grow: 1;
-    max-height: 400px;
+
+function displayPagination() {
+    if (!paginationControls) return;
+    paginationControls.innerHTML = '';
+    const totalPages = Math.ceil(reportsForDisplayInTable.length / reportsPerPage);
+
+    if (totalPages <= 1) return;
+
+    const createButton = (text, pageNum, isDisabled = false, isActive = false) => {
+        const button = document.createElement('button');
+        button.innerHTML = text;
+        button.disabled = isDisabled;
+        if (isActive) button.classList.add('active');
+        button.onclick = () => {
+            currentPage = pageNum;
+            populateTable();
+        };
+        return button;
+    };
+
+    paginationControls.appendChild(createButton('&laquo; السابق', currentPage - 1, currentPage === 1));
+
+    for (let i = 1; i <= totalPages; i++) {
+        if (i === 1 || i === totalPages || (i >= currentPage - 1 && i <= currentPage + 1)) {
+            paginationControls.appendChild(createButton(i, i, false, i === currentPage));
+        } else if ((i === currentPage - 2 && currentPage > 3) || (i === currentPage + 2 && currentPage < totalPages - 2)) {
+            const ellipsis = document.createElement('span');
+            ellipsis.textContent = '...';
+            ellipsis.style.margin = "0 5px";
+            paginationControls.appendChild(ellipsis);
+        }
+    }
+    paginationControls.appendChild(createButton('التالي &raquo;', currentPage + 1, currentPage === totalPages));
+}
+
+function updateKPIs() {
+    const today = getToday();
+    let reportsForKpiCalc = filteredReportsBase; // Start with base filtered reports
+
+    // If a date range is active (either manually or by month filter),
+    // KPIs like "Due Today", "Due Soon" should respect this range.
+    // "Total Reports" and "Past Due" are generally independent of the selected period for their core meaning.
+    const startDateValue = startDateInput.value ? new Date(startDateInput.value) : null;
+    const endDateValue = endDateInput.value ? new Date(endDateInput.value) : null;
+    if (endDateValue) endDateValue.setHours(23, 59, 59, 999);
+
+    let reportsInSelectedPeriod = filteredReportsBase;
+    if (startDateValue && endDateValue) {
+        reportsInSelectedPeriod = filteredReportsBase.filter(report => {
+            const dueDate = new Date(report.dueDate);
+            return dueDate >= startDateValue && dueDate <= endDateValue;
+        });
+    }
+    
+    // "إجمالي التقارير" (KPI) now refers to non-past-due reports within the selected period if a period is set,
+    // or all non-past-due if no period is set.
+    let kpiTotalScope = (startDateValue && endDateValue) ? reportsInSelectedPeriod : filteredReportsBase;
+    const nonPastDueForTotalKpi = kpiTotalScope.filter(r => !getReportStatusWithReference(r.dueDate, today).isPastDue);
+    kpiTotalReportsValue.textContent = nonPastDueForTotalKpi.length;
+
+
+    // "إجمالي تقارير الفترة" specifically uses reports within the date range (non-past-due)
+    if (startDateValue && endDateValue) {
+        const nonPastDueInPeriod = reportsInSelectedPeriod.filter(r => !getReportStatusWithReference(r.dueDate, today).isPastDue);
+        kpiPeriodReportsValue.textContent = nonPastDueInPeriod.length;
+    } else {
+        kpiPeriodReportsValue.textContent = '-';
+    }
+
+    // For "Due Today" and "Due Soon", use reports within the selected period (if any), then filter by status.
+    // And these should always be non-past-due.
+    let scopeForTimedKpis = ((startDateValue && endDateValue) ? reportsInSelectedPeriod : filteredReportsBase)
+                             .filter(r => !getReportStatusWithReference(r.dueDate, today).isPastDue);
+
+    kpiDueTodayValue.textContent = scopeForTimedKpis.filter(r => diffInDays(r.dueDate, today) === 0).length;
+    kpiDueSoonValue.textContent = scopeForTimedKpis.filter(r => {
+        const diff = diffInDays(r.dueDate, today);
+        return diff >= 0 && diff <= 2;
+    }).length;
+    
+    // "تقارير منتهية" is always based on all filteredReportsBase, irrespective of selected period.
+    const pastDueReportsForKpi = filteredReportsBase.filter(r => getReportStatusWithReference(r.dueDate, today).isPastDue);
+    kpiPastDueValue.textContent = pastDueReportsForKpi.length;
+
+
+    const upcomingOrDueTodayForNotification = nonPastDueReportsForKpi.filter(r => {
+        const diff = diffInDays(r.dueDate, today);
+        return diff >= 0 && diff <= 2;
+    }).length;
+
+    if (notificationDot) {
+        notificationDot.style.display = upcomingOrDueTodayForNotification > 0 ? 'block' : 'none';
+    }
+
+    document.querySelectorAll('.kpi-card').forEach(card => card.classList.remove('kpi-active-filter'));
+    if (activeKpiFilterType && kpiCards[activeKpiFilterType]) {
+        kpiCards[activeKpiFilterType].classList.add('kpi-active-filter');
+    }
+
+    if (kpiFilterIndicator) {
+        kpiFilterIndicator.textContent = '';
+        kpiFilterIndicator.style.display = 'none';
+    }
 }
 
 
-/* --- FullCalendar Styles --- */
-#calendar-section .fc {
-    background-color: var(--card-bg-light);
-    padding: 20px;
-    border-radius: 8px;
-    border: 1px solid var(--border-color-light);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.05);
-}
-.fc .fc-toolbar-title {
-    font-size: 1.3em !important;
-    color: var(--primary-dark-light);
-}
-.fc .fc-button {
-    background-color: var(--accent-gold) !important;
-    border-color: var(--accent-gold) !important;
-    color: white !important;
-    box-shadow: none !important;
-    text-transform: capitalize;
-    padding: 0.4em 0.8em !important;
-    font-size: 0.9em !important;
-}
-.fc .fc-button:hover {
-    background-color: var(--accent-gold-muted) !important;
-    border-color: var(--accent-gold-muted) !important;
-}
-.fc .fc-button-primary:disabled {
-    background-color: #e0e0e0 !important;
-    border-color: #e0e0e0 !important;
-}
-.fc .fc-today-button {
-    background-color: #D6DBDF !important;
-    border-color: #D6DBDF !important;
-    color: var(--text-color-light) !important;
-}
-.fc .fc-today-button:hover {
-    background-color: #c5cacf !important;
-    border-color: #c5cacf !important;
-}
+function applyAllFiltersAndRender() {
+    const searchTerm = searchInput.value.toLowerCase().trim();
+    const selectedDepartment = departmentFilter.value;
+    const today = getToday();
 
-.fc .fc-daygrid-day:hover {
-    background-color: var(--accent-gold-hover) !important;
-}
-.fc .fc-day-today {
-    background-color: var(--calendar-today-bg) !important;
-}
-.fc .fc-day-today .fc-daygrid-day-number {
-    font-weight: bold;
-    color: var(--primary-dark-light);
-}
+    filteredReportsBase = allReports.filter(report => {
+        const matchesSearch = searchTerm === '' ||
+            report.title.toLowerCase().includes(searchTerm) ||
+            report.department.toLowerCase().includes(searchTerm);
+        const matchesDepartment = selectedDepartment === '' || report.department === selectedDepartment;
+        return matchesSearch && matchesDepartment;
+    });
 
-.fc-event, .fc-event-dot {
-    background-color: var(--accent-gold) !important;
-    border-color: var(--accent-gold-muted) !important;
-    color: var(--accent-gold-text-on-gold-bg) !important;
-    padding: 3px 5px;
-}
-.fc-event .fc-event-title {
-    font-weight: normal;
-    font-size: 0.85em;
-    white-space: normal;
-}
-.fc-event:hover {
-   opacity: 0.85;
-}
+    if (activeKpiFilterType === 'past_due') {
+        reportsForChartsAndCalendar = filteredReportsBase.filter(r => getReportStatusWithReference(r.dueDate, today).isPastDue);
+    } else {
+        reportsForChartsAndCalendar = filteredReportsBase.filter(r => !getReportStatusWithReference(r.dueDate, today).isPastDue);
+    }
 
-/* --- Modal Styles --- */
-.modal {
-    display: none;
-    position: fixed;
-    z-index: 1000;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    overflow: auto;
-    background-color: rgba(0,0,0,0.6);
-}
-.modal-content {
-    background-color: var(--card-bg-light);
-    margin: 10% auto;
-    padding: 25px;
-    border: 1px solid var(--border-color-light);
-    border-radius: 8px;
-    width: 90%;
-    max-width: 500px;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-    position: relative;
-}
-.close-button {
-    color: var(--text-muted-light);
-    float: left;
-    font-size: 28px;
-    font-weight: bold;
-    line-height: 1;
-}
-.close-button:hover,
-.close-button:focus {
-    color: var(--accent-red);
-    text-decoration: none;
-    cursor: pointer;
-}
-.modal-content h3 {
-    margin-top: 0;
-    color: var(--primary-dark-light);
-    border-bottom: 1px solid var(--border-color-light);
-    padding-bottom: 10px;
-    margin-bottom: 20px;
-}
-.modal-content p {
-    margin-bottom: 10px;
-    font-size: 0.95rem;
-}
-.modal-content p strong {
-    color: var(--text-color-light);
-}
-#modal-email-button {
-    background-color: var(--accent-gold);
-    color: white;
-    padding: 10px 15px;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-family: var(--font-family-base);
-    font-size: 0.9rem;
-    transition: background-color 0.3s;
-    margin-top: 15px;
-}
-#modal-email-button i {
-    margin-left: 8px;
-}
-#modal-email-button:hover {
-    background-color: var(--accent-gold-muted);
+    let tempReportsForTable = [...reportsForChartsAndCalendar]; // Start with status-filtered reports
+
+    // Apply date range filter (from date inputs, possibly set by month filter)
+    const startDateValue = startDateInput.value ? new Date(startDateInput.value) : null;
+    const endDateValue = endDateInput.value ? new Date(endDateInput.value) : null;
+    if (endDateValue) endDateValue.setHours(23, 59, 59, 999);
+
+    if (startDateValue && endDateValue) {
+        tempReportsForTable = tempReportsForTable.filter(report => {
+            const dueDate = new Date(report.dueDate);
+            return dueDate >= startDateValue && dueDate <= endDateValue;
+        });
+    }
+    
+    // If a KPI filter is active, apply it ON TOP of the (potentially) date-filtered set
+    if (activeKpiFilterType) {
+        if (activeKpiFilterType === 'total_reports') {
+            // tempReportsForTable is already correct (non-past-due, possibly date-filtered)
+        } else if (activeKpiFilterType === 'period_reports') {
+            // This KPI relies on date inputs, which are already applied above.
+            // So, tempReportsForTable is already correct.
+        } else if (activeKpiFilterType === 'due_today') {
+            tempReportsForTable = tempReportsForTable.filter(r => diffInDays(r.dueDate, today) === 0);
+        } else if (activeKpiFilterType === 'due_soon') {
+            tempReportsForTable = tempReportsForTable.filter(r => {
+                const diff = diffInDays(r.dueDate, today);
+                return diff >= 0 && diff <= 2;
+            });
+        } else if (activeKpiFilterType === 'past_due') {
+            // If 'past_due' KPI is active, override tempReportsForTable to show only past_due from the base filter
+            tempReportsForTable = filteredReportsBase.filter(r => getReportStatusWithReference(r.dueDate, today).isPastDue);
+            // And apply date range if present
+            if (startDateValue && endDateValue) {
+                tempReportsForTable = tempReportsForTable.filter(report => {
+                    const dueDate = new Date(report.dueDate);
+                    return dueDate >= startDateValue && dueDate <= endDateValue;
+                });
+            }
+        }
+    }
+    
+    reportsForDisplayInTable = tempReportsForTable;
+
+    currentPage = 1;
+    populateTable();
+    updateKPIs(); // updateKPIs will now correctly use date range for relevant KPIs
+    updateMonthFilterButtonsUI();
+
+    const activeViewId = document.querySelector('.view.active')?.id;
+    if (activeViewId === 'analytics-section') renderAnalyticsCharts();
+    if (activeViewId === 'calendar-section') renderFullCalendar();
 }
 
 
-/* --- Responsive Adjustments --- */
-@media (max-width: 1200px) {
-    .kpi-cards-container {
-        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+function resetAllFilters() {
+    searchInput.value = '';
+    departmentFilter.value = '';
+    startDateInput.value = '';
+    endDateInput.value = '';
+    activeMonthFilter = null;
+    activeKpiFilterType = null;
+    activeKpiFilterName = '';
+    applyAllFiltersAndRender();
+}
+
+function handleKpiCardClick(event) {
+    const clickedCard = event.currentTarget;
+    const kpiType = clickedCard.dataset.kpiType;
+    const kpiName = clickedCard.querySelector('.kpi-label').textContent;
+
+    if (activeKpiFilterType === kpiType) {
+        activeKpiFilterType = null;
+        activeKpiFilterName = '';
+    } else {
+        activeKpiFilterType = kpiType;
+        activeKpiFilterName = kpiName;
+    }
+    // When a KPI filter is clicked, the month filter's date inputs are still respected
+    // by applyAllFiltersAndRender.
+    applyAllFiltersAndRender();
+}
+
+
+function handleMonthFilterClick(monthType) {
+    if (activeMonthFilter === monthType) {
+        activeMonthFilter = null;
+        startDateInput.value = '';
+        endDateInput.value = '';
+    } else {
+        activeMonthFilter = monthType;
+        const todayForMonthCalc = getToday(); // Use systemBaseDate for consistent month calculation
+        let year = todayForMonthCalc.getFullYear();
+        let month = todayForMonthCalc.getMonth();
+
+        if (monthType === 'current') {
+            // current month is already set
+        } else if (monthType === 'next') {
+            month += 1;
+            if (month > 11) {
+                month = 0;
+                year += 1;
+            }
+        }
+        
+        const firstDay = new Date(year, month, 1);
+        const lastDay = new Date(year, month + 1, 0);
+
+        startDateInput.value = dateToYYYYMMDD(firstDay);
+        endDateInput.value = dateToYYYYMMDD(lastDay);
+    }
+    // Month filter selection works in conjunction with active KPI filters.
+    // applyAllFiltersAndRender will handle the combined logic.
+    applyAllFiltersAndRender();
+}
+
+function updateMonthFilterButtonsUI() {
+    filterCurrentMonthButton?.classList.toggle('active', activeMonthFilter === 'current');
+    filterNextMonthButton?.classList.toggle('active', activeMonthFilter === 'next');
+}
+
+
+function handleNavigation(event) {
+    event.preventDefault();
+    const targetNavItem = event.target.closest('.nav-item');
+    if (!targetNavItem || targetNavItem.classList.contains('active')) return;
+
+    const viewId = targetNavItem.dataset.view;
+    if (!viewId) return;
+
+    document.querySelectorAll('.sidebar-nav .nav-item').forEach(item => item.classList.remove('active'));
+    targetNavItem.classList.add('active');
+
+    document.querySelectorAll('.main-content .view').forEach(view => {
+        view.classList.toggle('active', view.id === viewId);
+        if (view.id === viewId) {
+            if (viewId === 'analytics-section') renderAnalyticsCharts();
+            else if (viewId === 'calendar-section') renderFullCalendar();
+        }
+    });
+}
+
+function renderAnalyticsCharts() {
+    const dataForCharts = reportsForChartsAndCalendar;
+
+    const departmentCounts = dataForCharts.reduce((acc, r) => ({ ...acc, [r.department]: (acc[r.department] || 0) + 1 }), {});
+    const frequencyCounts = dataForCharts.reduce((acc, r) => ({ ...acc, [r.frequency]: (acc[r.frequency] || 0) + 1 }), {});
+
+    const chartOptions = (title) => ({
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: { position: 'bottom', labels: { font: { family: "'Cairo', sans-serif" } } },
+            tooltip: { bodyFont: { family: "'Cairo', sans-serif" }, titleFont: { family: "'Cairo', sans-serif" } }
+        }
+    });
+
+    const departmentChartCtx = document.getElementById('department-chart')?.getContext('2d');
+    if (departmentChartCtx) {
+        if (departmentChartInstance) departmentChartInstance.destroy();
+        departmentChartInstance = new Chart(departmentChartCtx, {
+            type: 'pie',
+            data: {
+                labels: Object.keys(departmentCounts),
+                datasets: [{
+                    label: 'التقارير حسب الجهة', data: Object.values(departmentCounts),
+                    backgroundColor: ['#C89638', '#bd9a5f', '#AEC6CF', '#E67E22', '#5cb85c', '#5bc0de', '#95A5A6', '#2C3E50', '#F1C40F', '#3498DB'],
+                    borderColor: '#FFFFFF', borderWidth: 2
+                }]
+            },
+            options: chartOptions('التقارير حسب الجهة')
+        });
+    }
+
+    const frequencyChartCtx = document.getElementById('frequency-chart')?.getContext('2d');
+    if (frequencyChartCtx) {
+        if (frequencyChartInstance) frequencyChartInstance.destroy();
+        frequencyChartInstance = new Chart(frequencyChartCtx, {
+            type: 'bar',
+            data: {
+                labels: Object.keys(frequencyCounts),
+                datasets: [{
+                    label: 'التقارير حسب التكرار', data: Object.values(frequencyCounts),
+                    backgroundColor: 'rgba(200, 150, 56, 0.8)',
+                    borderColor: 'rgba(200, 150, 56, 1)', borderWidth: 1
+                }]
+            },
+            options: { ...chartOptions('التقارير حسب التكرار'), scales: { y: { beginAtZero: true, ticks: { stepSize: 1, font: { family: "'Cairo', sans-serif" } } }, x: { ticks: { font: { family: "'Cairo', sans-serif" } } } } }
+        });
     }
 }
 
-@media (max-width: 992px) {
-    .sidebar {
-        width: 220px;
-    }
-    .main-content {
-        margin-right: 220px;
-    }
-    .top-bar h1 {
-        font-size: 1.3rem;
-    }
-    .top-bar-controls {
-        gap: 10px;
-    }
-    .top-bar-controls input[type="search"] {
-        width: 180px;
-    }
-    #department-filter {
-        min-width: 130px;
-        font-size: 0.85rem;
-    }
-    .kpi-cards-container {
-        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    }
-    .charts-container {
-        grid-template-columns: 1fr;
+function renderFullCalendar() {
+    const calendarEl = document.getElementById('calendar');
+    if (!calendarEl) return;
+
+    const eventsForCalendar = reportsForChartsAndCalendar.map(report => ({
+        id: report.id,
+        title: report.title,
+        start: report.dueDate,
+        allDay: true,
+        extendedProps: { ...report, statusInfo: getReportStatusWithReference(report.dueDate, getToday()) }
+    }));
+
+    if (calendarInstance) {
+        calendarInstance.removeAllEvents();
+        calendarInstance.addEventSource(eventsForCalendar);
+    } else {
+        calendarInstance = new FullCalendar.Calendar(calendarEl, {
+            locale: 'ar',
+            headerToolbar: { right: 'prev,next today', center: 'title', left: 'dayGridMonth,timeGridWeek,listWeek' },
+            initialView: 'dayGridMonth',
+            editable: false,
+            events: eventsForCalendar,
+            eventDisplay: 'block',
+            eventClick: function(info) {
+                currentModalReport = info.event.extendedProps;
+                modalTitle.textContent = currentModalReport.title;
+                modalDepartment.textContent = currentModalReport.department;
+                modalFrequency.textContent = currentModalReport.frequency;
+                modalDueDate.textContent = currentModalReport.dueDate;
+                modalStatus.textContent = currentModalReport.statusInfo.text;
+                modalStatus.className = `status-tag ${currentModalReport.statusInfo.class}`;
+                eventModal.style.display = 'block';
+            },
+        });
+        calendarInstance.render();
     }
 }
 
-@media (max-width: 768px) {
-    .dashboard-container {
-        flex-direction: column;
-    }
-    .sidebar {
-        position: static;
-        width: 100%;
-        height: auto;
-        border-left: none;
-        border-bottom: 1px solid var(--border-color-light);
-        padding: 0;
-        box-shadow: none;
-    }
-     .sidebar-header {
-        padding: 15px;
-        align-items: center;
-    }
-    #company-logo {
-        max-width: 180px;
-        margin-bottom: 8px;
-    }
-    .sidebar-badge-container {
-        padding: 0 15px 10px 15px;
-        text-align: right;
-    }
-    #workplace-badge {
-        max-width: 80px;
-        display: inline-block;
-    }
-    .sidebar-nav {
-        display: flex;
-        overflow-x: auto;
-        padding: 0 10px;
-        border-bottom: 1px solid var(--border-color-light);
-        border-top: 1px solid var(--border-color-light);
-        margin-top: 0;
-    }
-    .sidebar-nav .nav-item {
-        flex-shrink: 0;
-    }
-    .sidebar-nav .nav-item a {
-        padding: 12px 15px;
-        font-size: 0.9rem;
-        border-right: none;
-    }
-    .sidebar-nav .nav-item.active a,
-    .sidebar-nav .nav-item a:hover {
-        border-bottom: 3px solid var(--accent-gold);
-        background-color: var(--accent-gold-hover);
-        border-right-color: transparent;
-    }
-    .sidebar-filter-section {
-        padding: 15px;
-        margin-top: 0;
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
-        align-items: flex-end;
-    }
-    .sidebar-filter-section h3 {
-        width: 100%;
-        margin-bottom: 10px;
-        text-align: center;
-    }
-    .sidebar-filter-section .month-filter-buttons {
-        width: 100%;
-    }
-    .date-filter-group {
-        flex-grow: 1;
-        min-width: calc(50% - 5px);
-    }
-    .reset-all-btn { /* Ensure reset all button is full width on smaller screens if date inputs stack */
-        flex-basis: 100%;
-    }
-
-
-    .main-content {
-        margin-right: 0;
-    }
-    .top-bar {
-        flex-direction: column;
-        align-items: flex-start;
-        padding: 10px 15px;
-        position: static;
-    }
-    .top-bar h1 {
-        margin-bottom: 10px;
-    }
-    .top-bar-controls {
-        width: 100%;
-        flex-direction: column;
-        align-items: stretch;
-        gap: 10px;
-    }
-    .top-bar-controls input[type="search"],
-    #department-filter {
-        width: 100%;
-    }
-    #notifications-btn {
-        align-self: flex-end;
-        margin-bottom: 0;
-    }
-
-    .kpi-cards-container {
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    }
-    .charts-container {
-        grid-template-columns: 1fr;
-    }
-    .modal-content {
-        width: 90%;
-        margin: 15% auto;
-    }
-    #reports-table th,
-    #reports-table td {
-        white-space: normal;
-    }
+function closeModal() {
+    if (eventModal) eventModal.style.display = 'none';
+    currentModalReport = null;
 }
 
-@media (max-width: 480px) {
-    .sidebar-nav .nav-item a {
-        font-size: 0.85rem;
-        padding: 10px;
-    }
-    .sidebar-nav .nav-item a i {
-        margin-left: 8px;
-    }
-    .date-filter-group,
-    .reset-all-btn {
-        flex-basis: 100%;
-        min-width: 100%;
-    }
-     .reset-all-btn {
-        margin-top: 10px;
-    }
-    .view h2 {
-        font-size: 1.5rem;
-    }
-    #reports-table th,
-    #reports-table td {
-        font-size: 0.8rem;
-        padding: 6px 8px;
-    }
-    .status-tag {
-        font-size: 0.7rem;
-        padding: 3px 6px;
-        min-width: 70px;
-    }
-    .kpi-card {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-    .kpi-icon {
-        margin-left: 0;
-        margin-bottom: 10px;
-    }
-     #company-logo {
-        max-width: 150px;
-    }
-    #workplace-badge {
-        max-width: 70px;
-    }
-}
+document.addEventListener('DOMContentLoaded', () => {
+    fetchData();
+
+    document.querySelector('.sidebar-nav')?.addEventListener('click', handleNavigation);
+
+    searchInput?.addEventListener('input', applyAllFiltersAndRender);
+    departmentFilter?.addEventListener('change', applyAllFiltersAndRender);
+    startDateInput?.addEventListener('change', () => {
+        activeMonthFilter = null;
+        updateMonthFilterButtonsUI();
+        applyAllFiltersAndRender();
+    });
+    endDateInput?.addEventListener('change', () => {
+        activeMonthFilter = null;
+        updateMonthFilterButtonsUI();
+        applyAllFiltersAndRender();
+    });
+    
+    resetAllFiltersButton?.addEventListener('click', resetAllFilters);
+
+    Object.values(kpiCards).forEach(card => card?.addEventListener('click', handleKpiCardClick));
+
+    filterCurrentMonthButton?.addEventListener('click', () => handleMonthFilterClick('current'));
+    filterNextMonthButton?.addEventListener('click', () => handleMonthFilterClick('next'));
+
+
+    modalCloseButton?.addEventListener('click', closeModal);
+    window.addEventListener('click', (event) => { if (event.target === eventModal) closeModal(); });
+    modalEmailButton?.addEventListener('click', () => {
+        if (currentModalReport) {
+            const subject = `بخصوص تقرير: ${currentModalReport.title}`;
+            const body = `السلام عليكم،\n\nيرجى الاطلاع على تقرير "${currentModalReport.title}".\n\nمع وافر التحية والتقدير.`;
+            window.location.href = `mailto:${recipientEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+        }
+    });
+
+    document.querySelector('.nav-item[data-view="overview-section"]')?.classList.add('active');
+    document.getElementById('overview-section')?.classList.add('active');
+});
