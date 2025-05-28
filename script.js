@@ -103,12 +103,12 @@ function generateICSContent(report) {
         `DTSTART;VALUE=DATE:${dtstart}`,
         `SUMMARY:تذكير بتقرير: ${report.title}`,
         `DESCRIPTION:الجهة: ${report.department}\\nفترة التكرار: ${report.frequency}\\nتاريخ الاستحقاق: ${report.dueDate}`,
-        'STATUS:TENTATIVE', // Changed to TENTATIVE to imply it's a reminder/task to confirm
-        'TRANSP:TRANSPARENT', // TRANSPARENT so it doesn't block time by default
+        'STATUS:TENTATIVE',
+        'TRANSP:TRANSPARENT',
         'BEGIN:VALARM',
         'ACTION:DISPLAY',
         'DESCRIPTION:تذكير بالتقرير: ' + report.title,
-        'TRIGGER;VALUE=DATE-TIME:' + dtstart + 'T090000', // Reminder at 9 AM on the due date
+        'TRIGGER;VALUE=DATE-TIME:' + dtstart + 'T090000',
         'END:VALARM',
         'END:VEVENT',
         'END:VCALENDAR'
@@ -144,7 +144,7 @@ async function fetchData() {
         console.log('Data fetched successfully:', data.length, 'reports');
 
         allReports = data.map(item => ({
-            id: item[0],
+            id: item[0], // Original ID is kept for data integrity and potential linking
             department: item[1],
             title: item[2],
             frequency: item[3],
@@ -192,11 +192,15 @@ function populateTable() {
         cell.style.textAlign = 'center';
         cell.style.padding = '20px';
     } else {
-        paginatedReports.forEach(report => {
+        paginatedReports.forEach((report, index) => { // Added index here
             const row = reportsTableBody.insertRow();
             const statusInfo = getReportStatusWithReference(report.dueDate, getToday());
 
-            row.insertCell().textContent = report.id;
+            // **MODIFIED: Dynamic numbering for "م" column**
+            row.insertCell().textContent = startIndex + index + 1; // Sequential number based on overall filtered list
+            // If you want numbering to restart from 1 on each page:
+            // row.insertCell().textContent = index + 1; 
+
             row.insertCell().textContent = report.department;
             row.insertCell().textContent = report.title;
             row.insertCell().textContent = report.frequency;
@@ -209,7 +213,7 @@ function populateTable() {
             statusCell.appendChild(statusTag);
 
             const actionsCell = row.insertCell();
-            actionsCell.style.whiteSpace = 'nowrap'; // Prevent buttons from wrapping
+            actionsCell.style.whiteSpace = 'nowrap';
 
             const emailButton = document.createElement('button');
             emailButton.className = 'action-button';
@@ -252,7 +256,7 @@ function displayPagination() {
         if (isActive) button.classList.add('active');
         button.onclick = () => {
             currentPage = pageNum;
-            populateTable();
+            populateTable(); // Re-populate table which will re-calculate numbering
         };
         return button;
     };
@@ -401,7 +405,6 @@ function applyAllFiltersAndRender() {
     const activeViewId = document.querySelector('.view.active')?.id;
     if (activeViewId === 'analytics-section') renderAnalyticsCharts();
     if (activeViewId === 'calendar-section') renderFullCalendar();
-    // Timeline rendering is removed
 }
 
 
@@ -448,7 +451,6 @@ function handleNavigation(event) {
         if (view.id === viewId) {
             if (viewId === 'analytics-section') renderAnalyticsCharts();
             else if (viewId === 'calendar-section') renderFullCalendar();
-            // Timeline navigation logic removed
         }
     });
 }
@@ -541,15 +543,11 @@ function renderFullCalendar() {
     }
 }
 
-// Timeline functions are removed
-
-// --- Modal Logic ---
 function closeModal() {
     if (eventModal) eventModal.style.display = 'none';
     currentModalReport = null;
 }
 
-// --- Event Listeners ---
 document.addEventListener('DOMContentLoaded', () => {
     fetchData();
 
@@ -573,8 +571,6 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.href = `mailto:${recipientEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
         }
     });
-
-    // Timeline control listeners are removed
 
     document.querySelector('.nav-item[data-view="overview-section"]')?.classList.add('active');
     document.getElementById('overview-section')?.classList.add('active');
