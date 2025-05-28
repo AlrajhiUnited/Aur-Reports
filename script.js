@@ -13,11 +13,11 @@ const recipientEmail = 'shamdan@aur.com.sa';
 let departmentChartInstance = null;
 let frequencyChartInstance = null;
 let calendarInstance = null;
-// Timeline related variables are removed
 
 // State for KPI filter
 let activeKpiFilterType = null;
 let activeKpiFilterName = '';
+let activeMonthFilter = null; // 'current', 'next', or null
 
 // DOM Elements
 const loadingMessage = document.getElementById('loading-message');
@@ -31,6 +31,9 @@ const resetDateFilterButton = document.getElementById('reset-date-filter');
 const notificationDot = document.getElementById('notification-dot');
 const kpiFilterIndicator = document.getElementById('kpi-filter-indicator');
 const clearKpiFilterButton = document.getElementById('clear-kpi-filter');
+const filterCurrentMonthButton = document.getElementById('filter-current-month');
+const filterNextMonthButton = document.getElementById('filter-next-month');
+
 
 // KPI Card Elements & Values
 const kpiTotalReportsValue = document.getElementById('kpi-total-reports-value');
@@ -62,6 +65,14 @@ let currentModalReport = null;
 function getToday() {
     return new Date(systemBaseDate.getFullYear(), systemBaseDate.getMonth(), systemBaseDate.getDate());
 }
+
+function dateToYYYYMMDD(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
 
 function diffInDays(date1Str, date2) {
     const d1 = new Date(date1Str);
@@ -144,7 +155,7 @@ async function fetchData() {
         console.log('Data fetched successfully:', data.length, 'reports');
 
         allReports = data.map(item => ({
-            id: item[0], // Original ID is kept for data integrity and potential linking
+            id: item[0],
             department: item[1],
             title: item[2],
             frequency: item[3],
@@ -192,14 +203,11 @@ function populateTable() {
         cell.style.textAlign = 'center';
         cell.style.padding = '20px';
     } else {
-        paginatedReports.forEach((report, index) => { // Added index here
+        paginatedReports.forEach((report, index) => {
             const row = reportsTableBody.insertRow();
             const statusInfo = getReportStatusWithReference(report.dueDate, getToday());
 
-            // **MODIFIED: Dynamic numbering for "م" column**
-            row.insertCell().textContent = startIndex + index + 1; // Sequential number based on overall filtered list
-            // If you want numbering to restart from 1 on each page:
-            // row.insertCell().textContent = index + 1; 
+            row.insertCell().textContent = index + 1; // Page-specific numbering
 
             row.insertCell().textContent = report.department;
             row.insertCell().textContent = report.title;
@@ -256,7 +264,7 @@ function displayPagination() {
         if (isActive) button.classList.add('active');
         button.onclick = () => {
             currentPage = pageNum;
-            populateTable(); // Re-populate table which will re-calculate numbering
+            populateTable();
         };
         return button;
     };
@@ -354,14 +362,14 @@ function applyAllFiltersAndRender() {
                 reportsForDisplayInTable = reportsForChartsAndCalendar;
                 break;
             case 'period_reports':
-                const startDateValue = startDateInput.value ? new Date(startDateInput.value) : null;
-                const endDateValue = endDateInput.value ? new Date(endDateInput.value) : null;
-                if (endDateValue) endDateValue.setHours(23, 59, 59, 999);
+                const startDateKpi = startDateInput.value ? new Date(startDateInput.value) : null;
+                const endDateKpi = endDateInput.value ? new Date(endDateInput.value) : null;
+                if (endDateKpi) endDateKpi.setHours(23, 59, 59, 999);
 
-                if (startDateValue && endDateValue) {
+                if (startDateKpi && endDateKpi) {
                     reportsForDisplayInTable = reportsForChartsAndCalendar.filter(report => {
                         const dueDate = new Date(report.dueDate);
-                        return dueDate >= startDateValue && dueDate <= endDateValue;
+                        return dueDate >= startDateKpi && dueDate <= endDateKpi;
                     });
                 } else {
                     reportsForDisplayInTable = reportsForChartsAndCalendar;
@@ -383,7 +391,8 @@ function applyAllFiltersAndRender() {
                 reportsForDisplayInTable = reportsForChartsAndCalendar;
                 break;
         }
-    } else {
+    } else { // No KPI filter active, use date inputs or month filter
+        // If a month filter is active, it has already set the date inputs
         const startDateValue = startDateInput.value ? new Date(startDateInput.value) : null;
         const endDateValue = endDateInput.value ? new Date(endDateInput.value) : null;
         if (endDateValue) endDateValue.setHours(23, 59, 59, 999);
@@ -401,6 +410,8 @@ function applyAllFiltersAndRender() {
     currentPage = 1;
     populateTable();
     updateKPIs();
+    updateMonthFilterButtonsUI();
+
 
     const activeViewId = document.querySelector('.view.active')?.id;
     if (activeViewId === 'analytics-section') renderAnalyticsCharts();
@@ -411,6 +422,8 @@ function applyAllFiltersAndRender() {
 function resetDateFilter() {
     startDateInput.value = '';
     endDateInput.value = '';
+    activeMonthFilter = null; // Also reset active month filter
+    updateMonthFilterButtonsUI();
     applyAllFiltersAndRender();
 }
 
@@ -425,6 +438,8 @@ function handleKpiCardClick(event) {
     } else {
         activeKpiFilterType = kpiType;
         activeKpiFilterName = kpiName;
+        // Clicking a KPI filter should clear any active month filter
+        activeMonthFilter = null; 
     }
     applyAllFiltersAndRender();
 }
@@ -434,6 +449,45 @@ function clearActiveKpiFilter() {
     activeKpiFilterName = '';
     applyAllFiltersAndRender();
 }
+
+function handleMonthFilterClick(monthType) {
+    if (activeMonthFilter === monthType) { // Clicked the same active month filter again
+        activeMonthFilter = null;
+        startDateInput.value = ''; // Clear date inputs
+        endDateInput.value = '';
+    } else {
+        activeMonthFilter = monthType;
+        const today = getToday();
+        let year = today.getFullYear();
+        let month = today.getMonth(); // 0-11
+
+        if (monthType === 'current') {
+            // Current month
+        } else if (monthType === 'next') {
+            month += 1;
+            if (month > 11) {
+                month = 0;
+                year += 1;
+            }
+        }
+        
+        const firstDay = new Date(year, month, 1);
+        const lastDay = new Date(year, month + 1, 0); // Day 0 of next month is last day of current
+
+        startDateInput.value = dateToYYYYMMDD(firstDay);
+        endDateInput.value = dateToYYYYMMDD(lastDay);
+    }
+    // Clicking a month filter should clear any active KPI filter
+    activeKpiFilterType = null; 
+    activeKpiFilterName = '';
+    applyAllFiltersAndRender();
+}
+
+function updateMonthFilterButtonsUI() {
+    filterCurrentMonthButton?.classList.toggle('active', activeMonthFilter === 'current');
+    filterNextMonthButton?.classList.toggle('active', activeMonthFilter === 'next');
+}
+
 
 function handleNavigation(event) {
     event.preventDefault();
@@ -555,12 +609,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
     searchInput?.addEventListener('input', applyAllFiltersAndRender);
     departmentFilter?.addEventListener('change', applyAllFiltersAndRender);
-    startDateInput?.addEventListener('change', applyAllFiltersAndRender);
-    endDateInput?.addEventListener('change', applyAllFiltersAndRender);
+    startDateInput?.addEventListener('change', () => {
+        activeMonthFilter = null; // Clear month filter if date is manually changed
+        updateMonthFilterButtonsUI();
+        applyAllFiltersAndRender();
+    });
+    endDateInput?.addEventListener('change', () => {
+        activeMonthFilter = null; // Clear month filter if date is manually changed
+        updateMonthFilterButtonsUI();
+        applyAllFiltersAndRender();
+    });
     resetDateFilterButton?.addEventListener('click', resetDateFilter);
 
     Object.values(kpiCards).forEach(card => card?.addEventListener('click', handleKpiCardClick));
     clearKpiFilterButton?.addEventListener('click', clearActiveKpiFilter);
+
+    filterCurrentMonthButton?.addEventListener('click', () => handleMonthFilterClick('current'));
+    filterNextMonthButton?.addEventListener('click', () => handleMonthFilterClick('next'));
+
 
     modalCloseButton?.addEventListener('click', closeModal);
     window.addEventListener('click', (event) => { if (event.target === eventModal) closeModal(); });
