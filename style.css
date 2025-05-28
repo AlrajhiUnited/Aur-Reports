@@ -64,7 +64,22 @@ body {
 #company-logo {
     max-width: 160px;
     height: auto;
+    margin-bottom: 10px; /* Space below logo */
 }
+
+.sidebar-badge-container {
+    padding: 15px 20px;
+    text-align: center;
+    border-bottom: 1px solid var(--border-color-light); /* Optional: separator line */
+}
+
+#workplace-badge {
+    max-width: 80%; /* Adjust as needed, e.g., 180px */
+    height: auto;
+    border-radius: 8px; /* Optional: slightly rounded corners for the badge image */
+    /* box-shadow: 0 2px 4px rgba(0,0,0,0.1); Optional: subtle shadow */
+}
+
 
 .sidebar-nav {
     list-style: none;
@@ -107,6 +122,7 @@ body {
 .sidebar-filter-section {
     padding: 20px;
     border-top: 1px solid var(--border-color-light);
+    margin-top: auto; /* Ensures it stays at the bottom if nav items are few */
 }
 
 .sidebar-filter-section h3 {
@@ -668,6 +684,12 @@ body {
     }
     #company-logo {
         max-width: 130px;
+    }
+    .sidebar-badge-container {
+        padding: 10px 15px; /* Adjust padding for smaller screens */
+    }
+    #workplace-badge {
+        max-width: 150px; /* Adjust badge size for smaller screens */
     }
     .sidebar-nav {
         display: flex;
