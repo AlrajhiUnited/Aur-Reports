@@ -82,20 +82,87 @@ function diffInDays(date1Str, date2) {
     return Math.round((d1StartOfDay - date2) / (1000 * 60 * 60 * 24));
 }
 
-/**
- * Determines the status of a report based on its due date and a reference date.
- * @param {string} dueDateString - The due date of the report (YYYY-MM-DD).
- * @param {Date} referenceDate - The date to compare against (e.g., systemBaseDate or timelineReferenceDate).
- * @returns {object} An object with status text, CSS class, and isPastDue boolean.
- */
 function getReportStatusWithReference(dueDateString, referenceDate) {
     const refDateStartOfDay = new Date(referenceDate.getFullYear(), referenceDate.getMonth(), referenceDate.getDate());
     const diff = diffInDays(dueDateString, refDateStartOfDay);
 
+    // The timelineClass will primarily be used for border color now, as background is unified gold
     if (diff < 0) return { text: 'منتهي', class: 'status-past-due', timelineClass: 'timeline-item-past-due', isPastDue: true };
     if (diff === 0) return { text: 'مستحق اليوم', class: 'status-due-today', timelineClass: 'timeline-item-due-today', isPastDue: false };
     if (diff > 0 && diff <= 2) return { text: 'قادم قريباً', class: 'status-due-soon', timelineClass: 'timeline-item-due-soon', isPastDue: false };
     return { text: 'قادم', class: 'status-upcoming', timelineClass: 'timeline-item-upcoming', isPastDue: false };
+}
+
+/**
+ * Generates iCalendar (.ics) file content for a report.
+ * @param {object} report - The report object.
+ * @returns {string} The iCalendar content.
+ */
+function generateICSContent(report) {
+    const formatDateForICS = (dateString) => {
+        const date = new Date(dateString);
+        const year = date.getUTCFullYear();
+        const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+        const day = String(date.getUTCDate()).padStart(2, '0');
+        return `${year}${month}${day}`; // Format for all-day event
+    };
+
+    const now = new Date();
+    const dtstamp = `${now.getUTCFullYear()}${String(now.getUTCMonth() + 1).padStart(2, '0')}${String(now.getUTCDate()).padStart(2, '0')}T${String(now.getUTCHours()).padStart(2, '0')}${String(now.getUTCMinutes()).padStart(2, '0')}${String(now.getUTCSeconds()).padStart(2, '0')}Z`;
+    const uid = `report-${report.id}-${Date.now()}@aur.com.sa`; // Unique ID
+
+    // For all-day events, DTSTART should be just the date.
+    // DTEND is typically the next day for an all-day event if specified.
+    // Or, simply use DTSTART with VALUE=DATE and no DTEND for some clients.
+    const dtstart = formatDateForICS(report.dueDate);
+
+    let icsContent = [
+        'BEGIN:VCALENDAR',
+        'VERSION:2.0',
+        'PRODID:-//AUR//Report Dashboard//EN',
+        'BEGIN:VEVENT',
+        `UID:${uid}`,
+        `DTSTAMP:${dtstamp}`,
+        `DTSTART;VALUE=DATE:${dtstart}`, // Specifies an all-day event starting on this date
+        // For an all-day event, DTEND is often the day after DTSTART, or omitted if using VALUE=DATE for DTSTART
+        // `DTEND;VALUE=DATE:${formatDateForICS(new Date(new Date(report.dueDate).getTime() + 24 * 60 * 60 * 1000))}`,
+        `SUMMARY:تذكير بتقرير: ${report.title}`,
+        `DESCRIPTION:الجهة: ${report.department}\\nفترة التكرار: ${report.frequency}\\nتاريخ الاستحقاق: ${report.dueDate}`,
+        'STATUS:CONFIRMED',
+        'TRANSP:OPAQUE', // Shows as busy time
+        'BEGIN:VALARM',
+        'ACTION:DISPLAY',
+        'DESCRIPTION:تذكير بالتقرير',
+        'TRIGGER:-PT15M', // Reminder 15 minutes before (for timed events; for all-day, it's usually at a set time)
+        // For all-day events, a common reminder is on the day of the event at a specific time, e.g., 9 AM.
+        // Or a day before. Example for 9 AM on the day:
+        // 'TRIGGER;VALUE=DATE-TIME:' + dtstart + 'T090000'
+        // For simplicity, a basic reminder is set. Outlook handles all-day event reminders well.
+        'END:VALARM',
+        'END:VEVENT',
+        'END:VCALENDAR'
+    ].join('\r\n');
+
+    return icsContent;
+}
+
+/**
+ * Triggers download of an .ics file.
+ * @param {string} icsContent - The content of the .ics file.
+ * @param {string} reportTitle - The title of the report for the filename.
+ */
+function downloadICSFile(icsContent, reportTitle) {
+    const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8;' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    const filename = `تذكير-${reportTitle.replace(/[\s\/]+/g, '_')}.ics`; // Sanitize filename
+    link.setAttribute("download", filename);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
 }
 
 
@@ -114,19 +181,17 @@ async function fetchData() {
         console.log('Data fetched successfully:', data.length, 'reports');
 
         allReports = data.map(item => ({
-            id: item[0], // Vis.js needs unique IDs, ensure report IDs are unique
+            id: item[0],
             department: item[1],
             title: item[2],
             frequency: item[3],
             dueDate: item[4],
         }));
 
-        // Initialize time travel picker
         if (timeTravelDatePicker) {
             timeTravelDatePicker.value = timelineReferenceDate.toISOString().split('T')[0];
             updateTimeTravelDisplay();
         }
-
 
         populateDepartmentFilter();
         applyAllFiltersAndRender();
@@ -163,7 +228,7 @@ function populateTable() {
     if (paginatedReports.length === 0) {
         const row = reportsTableBody.insertRow();
         const cell = row.insertCell();
-        cell.colSpan = 7;
+        cell.colSpan = 7; // Updated colspan
         cell.textContent = activeKpiFilterType === 'past_due' ? `لا توجد تقارير منتهية تطابق البحث الحالي.` :
                            activeKpiFilterType ? `لا توجد تقارير تطابق فلتر (${activeKpiFilterName}) والبحث الحالي (مع استبعاد المنتهية).` :
                            'لا توجد تقارير (غير منتهية) تطابق معايير البحث أو التصفية الحالية.';
@@ -172,7 +237,6 @@ function populateTable() {
     } else {
         paginatedReports.forEach(report => {
             const row = reportsTableBody.insertRow();
-            // For table, status is always relative to systemBaseDate
             const statusInfo = getReportStatusWithReference(report.dueDate, getToday());
 
             row.insertCell().textContent = report.id;
@@ -188,9 +252,11 @@ function populateTable() {
             statusCell.appendChild(statusTag);
 
             const actionsCell = row.insertCell();
+            // Email button
             const emailButton = document.createElement('button');
             emailButton.className = 'action-button';
             emailButton.innerHTML = '<i class="fas fa-envelope"></i>';
+            emailButton.title = "إرسال بريد إلكتروني";
             emailButton.setAttribute('aria-label', `إرسال بريد بخصوص ${report.title}`);
             emailButton.onclick = () => {
                 const subject = `بخصوص تقرير: ${report.title}`;
@@ -198,6 +264,18 @@ function populateTable() {
                 window.location.href = `mailto:${recipientEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
             };
             actionsCell.appendChild(emailButton);
+
+            // Add to Calendar button
+            const calendarButton = document.createElement('button');
+            calendarButton.className = 'action-button';
+            calendarButton.innerHTML = '<i class="far fa-calendar-plus"></i>';
+            calendarButton.title = "إضافة تنبيه للتقويم";
+            calendarButton.setAttribute('aria-label', `إضافة تنبيه لتقرير ${report.title} إلى التقويم`);
+            calendarButton.onclick = () => {
+                const icsContent = generateICSContent(report);
+                downloadICSFile(icsContent, report.title);
+            };
+            actionsCell.appendChild(calendarButton);
         });
     }
     displayPagination();
@@ -238,9 +316,8 @@ function displayPagination() {
 }
 
 function updateKPIs() {
-    const today = getToday(); // System's "today"
+    const today = getToday();
 
-    // KPIs are calculated from filteredReportsBase (search + department, all statuses)
     const nonPastDueReportsForKpi = filteredReportsBase.filter(r => !getReportStatusWithReference(r.dueDate, today).isPastDue);
     const pastDueReportsForKpi = filteredReportsBase.filter(r => getReportStatusWithReference(r.dueDate, today).isPastDue);
 
@@ -294,9 +371,8 @@ function updateKPIs() {
 function applyAllFiltersAndRender() {
     const searchTerm = searchInput.value.toLowerCase().trim();
     const selectedDepartment = departmentFilter.value;
-    const today = getToday(); // System's "today" for default status checks
+    const today = getToday();
 
-    // Step 1: Base filter (search, department) - includes all statuses
     filteredReportsBase = allReports.filter(report => {
         const matchesSearch = searchTerm === '' ||
             report.title.toLowerCase().includes(searchTerm) ||
@@ -305,19 +381,16 @@ function applyAllFiltersAndRender() {
         return matchesSearch && matchesDepartment;
     });
 
-    // Step 2: Determine data for Charts, Calendar, and Timeline (based on systemBaseDate for status)
     if (activeKpiFilterType === 'past_due') {
         reportsForChartsAndCalendar = filteredReportsBase.filter(r => getReportStatusWithReference(r.dueDate, today).isPastDue);
     } else {
-        // For all other KPI filters or no KPI filter, charts/calendar show non-past-due relative to systemBaseDate
         reportsForChartsAndCalendar = filteredReportsBase.filter(r => !getReportStatusWithReference(r.dueDate, today).isPastDue);
     }
 
-    // Step 3: Determine data for Table Display
     if (activeKpiFilterType) {
         switch (activeKpiFilterType) {
             case 'total_reports':
-                reportsForDisplayInTable = reportsForChartsAndCalendar; // Already non-past-due
+                reportsForDisplayInTable = reportsForChartsAndCalendar;
                 break;
             case 'period_reports':
                 const startDateValue = startDateInput.value ? new Date(startDateInput.value) : null;
@@ -343,14 +416,13 @@ function applyAllFiltersAndRender() {
                 });
                 break;
             case 'past_due':
-                reportsForDisplayInTable = reportsForChartsAndCalendar; // Already past-due
+                reportsForDisplayInTable = reportsForChartsAndCalendar;
                 break;
             default:
                 reportsForDisplayInTable = reportsForChartsAndCalendar;
                 break;
         }
     } else {
-        // No KPI filter active, apply date range to non-past-due reports for table
         const startDateValue = startDateInput.value ? new Date(startDateInput.value) : null;
         const endDateValue = endDateInput.value ? new Date(endDateInput.value) : null;
         if (endDateValue) endDateValue.setHours(23, 59, 59, 999);
@@ -372,7 +444,7 @@ function applyAllFiltersAndRender() {
     const activeViewId = document.querySelector('.view.active')?.id;
     if (activeViewId === 'analytics-section') renderAnalyticsCharts();
     if (activeViewId === 'calendar-section') renderFullCalendar();
-    if (activeViewId === 'timeline-section') renderTimeline(); // Render timeline if active
+    if (activeViewId === 'timeline-section') renderTimeline();
 }
 
 
@@ -503,7 +575,7 @@ function renderFullCalendar() {
                 modalDepartment.textContent = currentModalReport.department;
                 modalFrequency.textContent = currentModalReport.frequency;
                 modalDueDate.textContent = currentModalReport.dueDate;
-                modalStatus.textContent = currentModalReport.statusInfo.text; // Status relative to systemBaseDate
+                modalStatus.textContent = currentModalReport.statusInfo.text;
                 modalStatus.className = `status-tag ${currentModalReport.statusInfo.class}`;
                 eventModal.style.display = 'block';
             },
@@ -520,67 +592,89 @@ function updateTimeTravelDisplay() {
 }
 
 function renderTimeline() {
-    if (!timelineContainer) return;
+    if (!timelineContainer || !window.vis) { // Check if vis is loaded
+        console.error("Vis.js Timeline library not loaded or container not found.");
+        if(timelineLoadingMessage) timelineLoadingMessage.textContent = "خطأ في تحميل مكتبة الخط الزمني.";
+        return;
+    }
     if (timelineLoadingMessage) timelineLoadingMessage.style.display = 'block';
 
-    // Data for timeline is reportsForChartsAndCalendar
-    // Status for timeline items will be relative to timelineReferenceDate
-    const items = new vis.DataSet(reportsForChartsAndCalendar.map(report => {
-        const statusInfo = getReportStatusWithReference(report.dueDate, timelineReferenceDate); // Status relative to timeline ref date
+    const itemsArray = reportsForChartsAndCalendar.map(report => {
+        const statusInfo = getReportStatusWithReference(report.dueDate, timelineReferenceDate);
         return {
             id: report.id,
             content: report.title,
-            start: report.dueDate, // Must be YYYY-MM-DD
-            className: statusInfo.timelineClass, // For status-based coloring
-            originalReport: report // Store original report for modal
+            start: report.dueDate,
+            className: `vis-item-custom ${statusInfo.timelineClass}`, // Unified gold background via CSS, border via status
+            title: `${report.title}\nالجهة: ${report.department}\nتاريخ الاستحقاق: ${report.dueDate}\nالحالة (بالنسبة لـ ${timelineReferenceDate.toISOString().split('T')[0]}): ${statusInfo.text}`, // Tooltip
+            originalReport: report
         };
-    }));
+    });
+    const items = new vis.DataSet(itemsArray);
+
 
     const options = {
-        locale: 'ar', // Basic localization for some elements if vis.js supports it
+        locale: 'ar',
         orientation: { item: 'top' },
         editable: false,
         selectable: true,
-        zoomMin: 1000 * 60 * 60 * 24 * 7, // Minimum zoom: 1 week
-        zoomMax: 1000 * 60 * 60 * 24 * 365 * 3, // Maximum zoom: 3 years
-        // Set initial window around the timelineReferenceDate
-        start: new Date(timelineReferenceDate.getFullYear(), timelineReferenceDate.getMonth() - 1, 1),
-        end: new Date(timelineReferenceDate.getFullYear(), timelineReferenceDate.getMonth() + 2, 1),
-        height: '400px', // Ensure height is set
-        // showCurrentTime: false, // We'll add a custom one for timelineReferenceDate
+        zoomMin: 1000 * 60 * 60 * 24 * 7,
+        zoomMax: 1000 * 60 * 60 * 24 * 365 * 3,
+        start: new Date(timelineReferenceDate.getFullYear(), timelineReferenceDate.getMonth() - 1, timelineReferenceDate.getDate()),
+        end: new Date(timelineReferenceDate.getFullYear(), timelineReferenceDate.getMonth() + 2, timelineReferenceDate.getDate()),
+        height: '400px',
+        // Ensure items don't overlap too much if possible
+        stack: true, // Try stacking items
+        margin: {
+            item: {
+                vertical: 5, // Add some vertical margin between items
+                horizontal: 2
+            }
+        }
     };
 
     if (timelineInstance) {
-        timelineInstance.destroy(); // Destroy existing instance before creating new
+        timelineInstance.destroy();
     }
-    timelineInstance = new vis.Timeline(timelineContainer, items, options);
-
-    // Add custom time bar for timelineReferenceDate
     try {
-        timelineInstance.removeCustomTime('referenceDate');
-    } catch (e) { /* ignore if not found */ }
-    timelineInstance.addCustomTime(timelineReferenceDate, 'referenceDate');
-    timelineInstance.customTimes[timelineInstance.customTimes.length -1].hammer.off("pan"); // Make it non-draggable
+        timelineInstance = new vis.Timeline(timelineContainer, items, options);
 
-    timelineInstance.on('select', function (properties) {
-        if (properties.items.length > 0) {
-            const selectedReportId = properties.items[0];
-            const reportData = items.get(selectedReportId)?.originalReport;
-            if (reportData) {
-                currentModalReport = reportData; // Set for the modal
-                // Status for modal should be relative to systemBaseDate
-                const statusForModal = getReportStatusWithReference(reportData.dueDate, getToday());
-
-                modalTitle.textContent = reportData.title;
-                modalDepartment.textContent = reportData.department;
-                modalFrequency.textContent = reportData.frequency;
-                modalDueDate.textContent = reportData.dueDate;
-                modalStatus.textContent = statusForModal.text;
-                modalStatus.className = `status-tag ${statusForModal.class}`;
-                eventModal.style.display = 'block';
-            }
+        try { timelineInstance.removeCustomTime('referenceDate'); } catch (e) { /* ignore */ }
+        timelineInstance.addCustomTime(timelineReferenceDate, 'referenceDate');
+        // Make custom time bar non-interactive
+        const customTimeBar = timelineInstance.customTimes.find(ct => ct.id === 'referenceDate');
+        if (customTimeBar && customTimeBar.hammer) {
+             customTimeBar.hammer.off("pan");
+             customTimeBar.hammer.off("tap");
+             customTimeBar.hammer.off("press");
         }
-    });
+
+
+        timelineInstance.on('select', function (properties) {
+            if (properties.items.length > 0) {
+                const selectedReportId = properties.items[0];
+                const selectedItem = items.get(selectedReportId); // Get item from DataSet
+                if (selectedItem && selectedItem.originalReport) {
+                    const reportData = selectedItem.originalReport;
+                    currentModalReport = reportData;
+                    const statusForModal = getReportStatusWithReference(reportData.dueDate, getToday());
+
+                    modalTitle.textContent = reportData.title;
+                    modalDepartment.textContent = reportData.department;
+                    modalFrequency.textContent = reportData.frequency;
+                    modalDueDate.textContent = reportData.dueDate;
+                    modalStatus.textContent = statusForModal.text;
+                    modalStatus.className = `status-tag ${statusForModal.class}`;
+                    eventModal.style.display = 'block';
+                }
+            }
+        });
+    } catch(e) {
+        console.error("Error initializing Vis.js Timeline:", e);
+        if(timelineLoadingMessage) timelineLoadingMessage.textContent = "خطأ عند عرض الخط الزمني.";
+    }
+
+
     if (timelineLoadingMessage) timelineLoadingMessage.style.display = 'none';
     console.log("Timeline rendered/updated");
 }
@@ -594,7 +688,7 @@ function closeModal() {
 
 // --- Event Listeners ---
 document.addEventListener('DOMContentLoaded', () => {
-    fetchData(); // This will also call applyAllFiltersAndRender
+    fetchData();
 
     document.querySelector('.sidebar-nav')?.addEventListener('click', handleNavigation);
 
@@ -620,24 +714,26 @@ document.addEventListener('DOMContentLoaded', () => {
     // Timeline controls
     timelineZoomInButton?.addEventListener('click', () => timelineInstance?.zoomIn(0.5));
     timelineZoomOutButton?.addEventListener('click', () => timelineInstance?.zoomOut(0.5));
-    timelinePrevButton?.addEventListener('click', () => timelineInstance?.move(-0.3));
-    timelineNextButton?.addEventListener('click', () => timelineInstance?.move(0.3));
+    timelinePrevButton?.addEventListener('click', () => timelineInstance?.move(0.3)); // Positive to move window "forward" (older dates)
+    timelineNextButton?.addEventListener('click', () => timelineInstance?.move(-0.3)); // Negative to move window "backward" (newer dates)
     timelineTodayButton?.addEventListener('click', () => {
         if (timelineInstance) {
-            timelineInstance.moveTo(timelineReferenceDate);
+            timelineInstance.moveTo(timelineReferenceDate, { animation: true });
         }
     });
     timeTravelDatePicker?.addEventListener('change', (event) => {
         const newDate = new Date(event.target.value);
-        if (!isNaN(newDate)) {
+        if (!isNaN(newDate.valueOf())) { // Check if date is valid
             timelineReferenceDate = newDate;
             updateTimeTravelDisplay();
             if (document.getElementById('timeline-section').classList.contains('active')) {
-                renderTimeline(); // Re-render with new reference date for item coloring and focus
+                renderTimeline();
             }
+        } else {
+            // Handle invalid date input if necessary, e.g., reset to previous valid date
+            event.target.value = timelineReferenceDate.toISOString().split('T')[0];
         }
     });
-
 
     document.querySelector('.nav-item[data-view="overview-section"]')?.classList.add('active');
     document.getElementById('overview-section')?.classList.add('active');
