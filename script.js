@@ -13,8 +13,7 @@ const recipientEmail = 'shamdan@aur.com.sa';
 let departmentChartInstance = null;
 let frequencyChartInstance = null;
 let calendarInstance = null;
-let timelineInstance = null; // For Vis.js Timeline
-let timelineReferenceDate = new Date(systemBaseDate); // For "Time Travel" feature, defaults to systemBaseDate
+// Timeline related variables are removed
 
 // State for KPI filter
 let activeKpiFilterType = null;
@@ -59,18 +58,6 @@ const modalStatus = document.getElementById('modal-status');
 const modalEmailButton = document.getElementById('modal-email-button');
 let currentModalReport = null;
 
-// Timeline DOM Elements
-const timelineContainer = document.getElementById('visualization-timeline');
-const timelineLoadingMessage = document.getElementById('timeline-loading-message');
-const timelineZoomInButton = document.getElementById('timeline-zoom-in');
-const timelineZoomOutButton = document.getElementById('timeline-zoom-out');
-const timelinePrevButton = document.getElementById('timeline-prev');
-const timelineNextButton = document.getElementById('timeline-next');
-const timelineTodayButton = document.getElementById('timeline-today');
-const timeTravelDatePicker = document.getElementById('time-travel-date-picker');
-const timeTravelDisplay = document.getElementById('time-travel-display');
-
-
 // --- Utility Functions ---
 function getToday() {
     return new Date(systemBaseDate.getFullYear(), systemBaseDate.getMonth(), systemBaseDate.getDate());
@@ -86,34 +73,24 @@ function getReportStatusWithReference(dueDateString, referenceDate) {
     const refDateStartOfDay = new Date(referenceDate.getFullYear(), referenceDate.getMonth(), referenceDate.getDate());
     const diff = diffInDays(dueDateString, refDateStartOfDay);
 
-    // The timelineClass will primarily be used for border color now, as background is unified gold
-    if (diff < 0) return { text: 'منتهي', class: 'status-past-due', timelineClass: 'timeline-item-past-due', isPastDue: true };
-    if (diff === 0) return { text: 'مستحق اليوم', class: 'status-due-today', timelineClass: 'timeline-item-due-today', isPastDue: false };
-    if (diff > 0 && diff <= 2) return { text: 'قادم قريباً', class: 'status-due-soon', timelineClass: 'timeline-item-due-soon', isPastDue: false };
-    return { text: 'قادم', class: 'status-upcoming', timelineClass: 'timeline-item-upcoming', isPastDue: false };
+    if (diff < 0) return { text: 'منتهي', class: 'status-past-due', isPastDue: true };
+    if (diff === 0) return { text: 'مستحق اليوم', class: 'status-due-today', isPastDue: false };
+    if (diff > 0 && diff <= 2) return { text: 'قادم قريباً', class: 'status-due-soon', isPastDue: false };
+    return { text: 'قادم', class: 'status-upcoming', isPastDue: false };
 }
 
-/**
- * Generates iCalendar (.ics) file content for a report.
- * @param {object} report - The report object.
- * @returns {string} The iCalendar content.
- */
 function generateICSContent(report) {
     const formatDateForICS = (dateString) => {
         const date = new Date(dateString);
         const year = date.getUTCFullYear();
         const month = String(date.getUTCMonth() + 1).padStart(2, '0');
         const day = String(date.getUTCDate()).padStart(2, '0');
-        return `${year}${month}${day}`; // Format for all-day event
+        return `${year}${month}${day}`;
     };
 
     const now = new Date();
     const dtstamp = `${now.getUTCFullYear()}${String(now.getUTCMonth() + 1).padStart(2, '0')}${String(now.getUTCDate()).padStart(2, '0')}T${String(now.getUTCHours()).padStart(2, '0')}${String(now.getUTCMinutes()).padStart(2, '0')}${String(now.getUTCSeconds()).padStart(2, '0')}Z`;
-    const uid = `report-${report.id}-${Date.now()}@aur.com.sa`; // Unique ID
-
-    // For all-day events, DTSTART should be just the date.
-    // DTEND is typically the next day for an all-day event if specified.
-    // Or, simply use DTSTART with VALUE=DATE and no DTEND for some clients.
+    const uid = `report-${report.id}-${Date.now()}@aur.com.sa`;
     const dtstart = formatDateForICS(report.dueDate);
 
     let icsContent = [
@@ -123,40 +100,28 @@ function generateICSContent(report) {
         'BEGIN:VEVENT',
         `UID:${uid}`,
         `DTSTAMP:${dtstamp}`,
-        `DTSTART;VALUE=DATE:${dtstart}`, // Specifies an all-day event starting on this date
-        // For an all-day event, DTEND is often the day after DTSTART, or omitted if using VALUE=DATE for DTSTART
-        // `DTEND;VALUE=DATE:${formatDateForICS(new Date(new Date(report.dueDate).getTime() + 24 * 60 * 60 * 1000))}`,
+        `DTSTART;VALUE=DATE:${dtstart}`,
         `SUMMARY:تذكير بتقرير: ${report.title}`,
         `DESCRIPTION:الجهة: ${report.department}\\nفترة التكرار: ${report.frequency}\\nتاريخ الاستحقاق: ${report.dueDate}`,
-        'STATUS:CONFIRMED',
-        'TRANSP:OPAQUE', // Shows as busy time
+        'STATUS:TENTATIVE', // Changed to TENTATIVE to imply it's a reminder/task to confirm
+        'TRANSP:TRANSPARENT', // TRANSPARENT so it doesn't block time by default
         'BEGIN:VALARM',
         'ACTION:DISPLAY',
-        'DESCRIPTION:تذكير بالتقرير',
-        'TRIGGER:-PT15M', // Reminder 15 minutes before (for timed events; for all-day, it's usually at a set time)
-        // For all-day events, a common reminder is on the day of the event at a specific time, e.g., 9 AM.
-        // Or a day before. Example for 9 AM on the day:
-        // 'TRIGGER;VALUE=DATE-TIME:' + dtstart + 'T090000'
-        // For simplicity, a basic reminder is set. Outlook handles all-day event reminders well.
+        'DESCRIPTION:تذكير بالتقرير: ' + report.title,
+        'TRIGGER;VALUE=DATE-TIME:' + dtstart + 'T090000', // Reminder at 9 AM on the due date
         'END:VALARM',
         'END:VEVENT',
         'END:VCALENDAR'
     ].join('\r\n');
-
     return icsContent;
 }
 
-/**
- * Triggers download of an .ics file.
- * @param {string} icsContent - The content of the .ics file.
- * @param {string} reportTitle - The title of the report for the filename.
- */
 function downloadICSFile(icsContent, reportTitle) {
     const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8;' });
     const link = document.createElement("a");
     const url = URL.createObjectURL(blob);
     link.setAttribute("href", url);
-    const filename = `تذكير-${reportTitle.replace(/[\s\/]+/g, '_')}.ics`; // Sanitize filename
+    const filename = `تذكير-${reportTitle.replace(/[\s\/]+/g, '_')}.ics`;
     link.setAttribute("download", filename);
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
@@ -165,8 +130,6 @@ function downloadICSFile(icsContent, reportTitle) {
     URL.revokeObjectURL(url);
 }
 
-
-// --- Data Fetching and Processing ---
 async function fetchData() {
     console.log('Fetching data...');
     if (loadingMessage) loadingMessage.style.display = 'block';
@@ -188,11 +151,6 @@ async function fetchData() {
             dueDate: item[4],
         }));
 
-        if (timeTravelDatePicker) {
-            timeTravelDatePicker.value = timelineReferenceDate.toISOString().split('T')[0];
-            updateTimeTravelDisplay();
-        }
-
         populateDepartmentFilter();
         applyAllFiltersAndRender();
 
@@ -204,7 +162,6 @@ async function fetchData() {
     }
 }
 
-// --- UI Updates ---
 function populateDepartmentFilter() {
     if (!departmentFilter) return;
     const departments = [...new Set(allReports.map(report => report.department))].sort((a, b) => a.localeCompare(b, 'ar'));
@@ -228,7 +185,7 @@ function populateTable() {
     if (paginatedReports.length === 0) {
         const row = reportsTableBody.insertRow();
         const cell = row.insertCell();
-        cell.colSpan = 7; // Updated colspan
+        cell.colSpan = 7;
         cell.textContent = activeKpiFilterType === 'past_due' ? `لا توجد تقارير منتهية تطابق البحث الحالي.` :
                            activeKpiFilterType ? `لا توجد تقارير تطابق فلتر (${activeKpiFilterName}) والبحث الحالي (مع استبعاد المنتهية).` :
                            'لا توجد تقارير (غير منتهية) تطابق معايير البحث أو التصفية الحالية.';
@@ -252,7 +209,8 @@ function populateTable() {
             statusCell.appendChild(statusTag);
 
             const actionsCell = row.insertCell();
-            // Email button
+            actionsCell.style.whiteSpace = 'nowrap'; // Prevent buttons from wrapping
+
             const emailButton = document.createElement('button');
             emailButton.className = 'action-button';
             emailButton.innerHTML = '<i class="fas fa-envelope"></i>';
@@ -265,7 +223,6 @@ function populateTable() {
             };
             actionsCell.appendChild(emailButton);
 
-            // Add to Calendar button
             const calendarButton = document.createElement('button');
             calendarButton.className = 'action-button';
             calendarButton.innerHTML = '<i class="far fa-calendar-plus"></i>';
@@ -444,7 +401,7 @@ function applyAllFiltersAndRender() {
     const activeViewId = document.querySelector('.view.active')?.id;
     if (activeViewId === 'analytics-section') renderAnalyticsCharts();
     if (activeViewId === 'calendar-section') renderFullCalendar();
-    if (activeViewId === 'timeline-section') renderTimeline();
+    // Timeline rendering is removed
 }
 
 
@@ -491,7 +448,7 @@ function handleNavigation(event) {
         if (view.id === viewId) {
             if (viewId === 'analytics-section') renderAnalyticsCharts();
             else if (viewId === 'calendar-section') renderFullCalendar();
-            else if (viewId === 'timeline-section') renderTimeline();
+            // Timeline navigation logic removed
         }
     });
 }
@@ -584,101 +541,7 @@ function renderFullCalendar() {
     }
 }
 
-// --- Timeline Section ---
-function updateTimeTravelDisplay() {
-    if (timeTravelDisplay && timelineReferenceDate) {
-        timeTravelDisplay.textContent = `التاريخ المرجعي: ${timelineReferenceDate.toISOString().split('T')[0]}`;
-    }
-}
-
-function renderTimeline() {
-    if (!timelineContainer || !window.vis) { // Check if vis is loaded
-        console.error("Vis.js Timeline library not loaded or container not found.");
-        if(timelineLoadingMessage) timelineLoadingMessage.textContent = "خطأ في تحميل مكتبة الخط الزمني.";
-        return;
-    }
-    if (timelineLoadingMessage) timelineLoadingMessage.style.display = 'block';
-
-    const itemsArray = reportsForChartsAndCalendar.map(report => {
-        const statusInfo = getReportStatusWithReference(report.dueDate, timelineReferenceDate);
-        return {
-            id: report.id,
-            content: report.title,
-            start: report.dueDate,
-            className: `vis-item-custom ${statusInfo.timelineClass}`, // Unified gold background via CSS, border via status
-            title: `${report.title}\nالجهة: ${report.department}\nتاريخ الاستحقاق: ${report.dueDate}\nالحالة (بالنسبة لـ ${timelineReferenceDate.toISOString().split('T')[0]}): ${statusInfo.text}`, // Tooltip
-            originalReport: report
-        };
-    });
-    const items = new vis.DataSet(itemsArray);
-
-
-    const options = {
-        locale: 'ar',
-        orientation: { item: 'top' },
-        editable: false,
-        selectable: true,
-        zoomMin: 1000 * 60 * 60 * 24 * 7,
-        zoomMax: 1000 * 60 * 60 * 24 * 365 * 3,
-        start: new Date(timelineReferenceDate.getFullYear(), timelineReferenceDate.getMonth() - 1, timelineReferenceDate.getDate()),
-        end: new Date(timelineReferenceDate.getFullYear(), timelineReferenceDate.getMonth() + 2, timelineReferenceDate.getDate()),
-        height: '400px',
-        // Ensure items don't overlap too much if possible
-        stack: true, // Try stacking items
-        margin: {
-            item: {
-                vertical: 5, // Add some vertical margin between items
-                horizontal: 2
-            }
-        }
-    };
-
-    if (timelineInstance) {
-        timelineInstance.destroy();
-    }
-    try {
-        timelineInstance = new vis.Timeline(timelineContainer, items, options);
-
-        try { timelineInstance.removeCustomTime('referenceDate'); } catch (e) { /* ignore */ }
-        timelineInstance.addCustomTime(timelineReferenceDate, 'referenceDate');
-        // Make custom time bar non-interactive
-        const customTimeBar = timelineInstance.customTimes.find(ct => ct.id === 'referenceDate');
-        if (customTimeBar && customTimeBar.hammer) {
-             customTimeBar.hammer.off("pan");
-             customTimeBar.hammer.off("tap");
-             customTimeBar.hammer.off("press");
-        }
-
-
-        timelineInstance.on('select', function (properties) {
-            if (properties.items.length > 0) {
-                const selectedReportId = properties.items[0];
-                const selectedItem = items.get(selectedReportId); // Get item from DataSet
-                if (selectedItem && selectedItem.originalReport) {
-                    const reportData = selectedItem.originalReport;
-                    currentModalReport = reportData;
-                    const statusForModal = getReportStatusWithReference(reportData.dueDate, getToday());
-
-                    modalTitle.textContent = reportData.title;
-                    modalDepartment.textContent = reportData.department;
-                    modalFrequency.textContent = reportData.frequency;
-                    modalDueDate.textContent = reportData.dueDate;
-                    modalStatus.textContent = statusForModal.text;
-                    modalStatus.className = `status-tag ${statusForModal.class}`;
-                    eventModal.style.display = 'block';
-                }
-            }
-        });
-    } catch(e) {
-        console.error("Error initializing Vis.js Timeline:", e);
-        if(timelineLoadingMessage) timelineLoadingMessage.textContent = "خطأ عند عرض الخط الزمني.";
-    }
-
-
-    if (timelineLoadingMessage) timelineLoadingMessage.style.display = 'none';
-    console.log("Timeline rendered/updated");
-}
-
+// Timeline functions are removed
 
 // --- Modal Logic ---
 function closeModal() {
@@ -711,29 +574,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Timeline controls
-    timelineZoomInButton?.addEventListener('click', () => timelineInstance?.zoomIn(0.5));
-    timelineZoomOutButton?.addEventListener('click', () => timelineInstance?.zoomOut(0.5));
-    timelinePrevButton?.addEventListener('click', () => timelineInstance?.move(0.3)); // Positive to move window "forward" (older dates)
-    timelineNextButton?.addEventListener('click', () => timelineInstance?.move(-0.3)); // Negative to move window "backward" (newer dates)
-    timelineTodayButton?.addEventListener('click', () => {
-        if (timelineInstance) {
-            timelineInstance.moveTo(timelineReferenceDate, { animation: true });
-        }
-    });
-    timeTravelDatePicker?.addEventListener('change', (event) => {
-        const newDate = new Date(event.target.value);
-        if (!isNaN(newDate.valueOf())) { // Check if date is valid
-            timelineReferenceDate = newDate;
-            updateTimeTravelDisplay();
-            if (document.getElementById('timeline-section').classList.contains('active')) {
-                renderTimeline();
-            }
-        } else {
-            // Handle invalid date input if necessary, e.g., reset to previous valid date
-            event.target.value = timelineReferenceDate.toISOString().split('T')[0];
-        }
-    });
+    // Timeline control listeners are removed
 
     document.querySelector('.nav-item[data-view="overview-section"]')?.classList.add('active');
     document.getElementById('overview-section')?.classList.add('active');
