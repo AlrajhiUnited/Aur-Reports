@@ -56,43 +56,43 @@ body {
 }
 
 .sidebar-header {
-    padding: 20px 15px 10px 15px; /* Adjusted padding for tighter fit */
+    padding: 20px 15px 10px 15px;
     text-align: center;
     display: flex;
     flex-direction: column;
-    align-items: center; /* Center logo */
+    align-items: center;
 }
 
 #company-logo {
-    max-width: 220px; /* Maximized logo size within sidebar constraints */
-    width: calc(100% - 20px); /* Ensure it doesn't overflow with padding */
+    max-width: 220px;
+    width: calc(100% - 20px);
     height: auto;
-    margin-bottom: 8px; /* Reduced space between logo and badge */
-    display: block; /* Ensure it behaves as a block for centering */
+    margin-bottom: 8px;
+    display: block;
 }
 
 .sidebar-badge-container {
-    width: 100%; /* Container takes full width */
-    padding: 0 20px 15px 20px; /* Padding for the container, especially bottom */
+    width: 100%;
+    padding: 0 20px 15px 20px;
     box-sizing: border-box;
-    text-align: right; /* Align the inline-block badge to the right */
+    text-align: right;
 }
 
 #workplace-badge {
-    max-width: 80px; /* Further reduced badge size */
+    max-width: 80px;
     height: auto;
     border-radius: 4px;
-    display: inline-block; /* To respect text-align: right */
+    display: inline-block;
 }
 
 
 .sidebar-nav {
     list-style: none;
     padding: 15px 0;
-    margin: 0; /* Reset margin */
+    margin: 0;
     flex-grow: 1;
     border-top: 1px solid var(--border-color-light);
-    margin-top: 0; /* Remove previous margin-top if border is handling separation */
+    margin-top: 0;
 }
 
 .sidebar-nav .nav-item a {
@@ -129,19 +129,67 @@ body {
 .sidebar-filter-section {
     padding: 20px;
     border-top: 1px solid var(--border-color-light);
-    margin-top: auto; /* Ensures it stays at the bottom if nav items are few */
+    margin-top: auto;
 }
 
 .sidebar-filter-section h3 {
     font-size: 0.9rem;
     color: var(--text-color-light);
     margin-top: 0;
-    margin-bottom: 15px;
+    margin-bottom: 10px; /* Reduced margin */
+}
+.sidebar-filter-section .date-filter-group {
+    margin-bottom: 8px; /* Reduced margin */
+}
+.sidebar-filter-section #reset-date-filter {
+    margin-bottom: 15px; /* Space before divider */
 }
 
-.date-filter-group {
-    margin-bottom: 10px;
+.filter-divider {
+    border: none;
+    border-top: 1px solid var(--border-color-light);
+    margin: 15px 0;
 }
+
+.month-filter-buttons {
+    display: flex;
+    flex-direction: column; /* Stack buttons vertically */
+    gap: 8px; /* Space between month filter buttons */
+}
+
+.month-filter-btn {
+    background-color: #FFFFFF;
+    border: 1px solid var(--border-color-light);
+    color: var(--accent-gold-muted);
+    padding: 8px 15px;
+    border-radius: 20px; /* Pill shape */
+    font-family: var(--font-family-base);
+    font-size: 0.85rem;
+    width: 100%;
+    text-align: center; /* Center text */
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex; /* For icon alignment */
+    align-items: center;
+    justify-content: center;
+}
+.month-filter-btn i {
+    margin-left: 8px; /* Space between icon and text (RTL) */
+}
+
+.month-filter-btn:hover {
+    background-color: var(--accent-gold-hover);
+    color: var(--accent-gold);
+    border-color: var(--accent-gold-muted);
+}
+
+.month-filter-btn.active {
+    background-color: var(--accent-gold);
+    color: var(--accent-gold-text-on-gold-bg);
+    border-color: var(--accent-gold);
+    font-weight: bold;
+}
+
 
 .date-filter-group label {
     display: block;
@@ -160,14 +208,13 @@ body {
     font-size: 0.85rem;
     box-sizing: border-box;
 }
-.sidebar-filter-section button {
+.sidebar-filter-section #reset-date-filter { /* Specific target for reset button if needed */
     background-color: var(--accent-gold);
     color: white;
     cursor: pointer;
     transition: background-color 0.3s;
-    margin-top: 5px;
 }
-.sidebar-filter-section button:hover {
+.sidebar-filter-section #reset-date-filter:hover {
     background-color: var(--accent-gold-muted);
 }
 #clear-kpi-filter {
@@ -688,27 +735,27 @@ body {
     }
      .sidebar-header {
         padding: 15px;
-        align-items: center; /* Center items in column */
+        align-items: center;
     }
     #company-logo {
-        max-width: 180px; /* Adjusted for mobile */
+        max-width: 180px;
         margin-bottom: 8px;
     }
     .sidebar-badge-container {
-        padding: 0 15px 10px 15px; /* Adjust padding */
-        text-align: right; /* Ensure badge is right-aligned */
+        padding: 0 15px 10px 15px;
+        text-align: right;
     }
     #workplace-badge {
-        max-width: 80px; /* Smaller badge on mobile */
-        display: inline-block; /* Ensure text-align works */
+        max-width: 80px;
+        display: inline-block;
     }
     .sidebar-nav {
         display: flex;
         overflow-x: auto;
         padding: 0 10px;
         border-bottom: 1px solid var(--border-color-light);
-        border-top: 1px solid var(--border-color-light); /* Ensure separator */
-        margin-top: 0; /* Remove margin if border is on nav */
+        border-top: 1px solid var(--border-color-light);
+        margin-top: 0;
     }
     .sidebar-nav .nav-item {
         flex-shrink: 0;
@@ -736,6 +783,9 @@ body {
         width: 100%;
         margin-bottom: 10px;
         text-align: center;
+    }
+    .sidebar-filter-section .month-filter-buttons {
+        width: 100%; /* Make button container full width */
     }
     .date-filter-group {
         flex-grow: 1;
@@ -828,9 +878,9 @@ body {
         margin-bottom: 10px;
     }
      #company-logo {
-        max-width: 150px; /* Adjusted for smaller screens */
+        max-width: 150px;
     }
     #workplace-badge {
-        max-width: 70px; /* Further adjust for very small screens */
+        max-width: 70px;
     }
 }
