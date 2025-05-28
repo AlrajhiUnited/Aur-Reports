@@ -56,28 +56,27 @@ body {
 }
 
 .sidebar-header {
-    padding: 20px 20px 15px 20px;
+    padding: 20px 20px 10px 20px; /* Reduced bottom padding */
     text-align: center;
-    border-bottom: 1px solid var(--border-color-light);
+    /* border-bottom: 1px solid var(--border-color-light); Removed to merge with badge container */
 }
 
 #company-logo {
-    max-width: 160px;
+    max-width: 180px; /* Slightly larger logo */
     height: auto;
-    margin-bottom: 10px; /* Space below logo */
+    margin-bottom: 5px; /* Reduced space below logo */
 }
 
 .sidebar-badge-container {
-    padding: 15px 20px;
+    padding: 5px 20px 15px 20px; /* Adjusted padding */
     text-align: center;
-    border-bottom: 1px solid var(--border-color-light); /* Optional: separator line */
+    /* border-bottom: 1px solid var(--border-color-light); Removed separator line */
 }
 
 #workplace-badge {
-    max-width: 80%; /* Adjust as needed, e.g., 180px */
+    max-width: 120px; /* Smaller badge size */
     height: auto;
-    border-radius: 8px; /* Optional: slightly rounded corners for the badge image */
-    /* box-shadow: 0 2px 4px rgba(0,0,0,0.1); Optional: subtle shadow */
+    border-radius: 6px;
 }
 
 
@@ -86,6 +85,7 @@ body {
     padding: 15px 0;
     margin: 0;
     flex-grow: 1;
+    border-top: 1px solid var(--border-color-light); /* Add separator above nav if badge container has no border */
 }
 
 .sidebar-nav .nav-item a {
@@ -683,19 +683,20 @@ body {
         padding: 15px;
     }
     #company-logo {
-        max-width: 130px;
+        max-width: 150px; /* Adjusted for smaller screens */
     }
     .sidebar-badge-container {
-        padding: 10px 15px; /* Adjust padding for smaller screens */
+        padding: 10px 15px;
     }
     #workplace-badge {
-        max-width: 150px; /* Adjust badge size for smaller screens */
+        max-width: 100px; /* Smaller badge on mobile */
     }
     .sidebar-nav {
         display: flex;
         overflow-x: auto;
         padding: 0 10px;
         border-bottom: 1px solid var(--border-color-light);
+        border-top: none; /* Remove top border if badge container has no border */
     }
     .sidebar-nav .nav-item {
         flex-shrink: 0;
@@ -813,5 +814,11 @@ body {
     .kpi-icon {
         margin-left: 0;
         margin-bottom: 10px;
+    }
+     #company-logo {
+        max-width: 130px;
+    }
+    #workplace-badge {
+        max-width: 90px;
     }
 }
