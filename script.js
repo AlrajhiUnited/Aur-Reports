@@ -54,129 +54,183 @@ document.addEventListener('DOMContentLoaded', () => {
 
     console.log("Date context: 'today' is set to", today.toISOString().split('T')[0]);
 
-    function getThemeColor(cssVarName, fallbackColor) { /* ... unchanged ... */ }
-    function getStatus(dueDateStr) { /* ... unchanged ... */ }
-    function createMailtoLink(reportTitle) { /* ... unchanged ... */ }
-    function createCharts(dataForCharts) { /* ... unchanged ... */ }
-    function populateTable(reportsToShow) { /* ... unchanged ... */ }
-    function updateKPIs(currentBaseFilteredData, currentDateRangeFilteredData) { /* ... unchanged ... */ }
-    function displayPagination(totalRows) { /* ... unchanged ... */ }
-    function populateFilter(data) { /* ... unchanged ... */ }
-    function renderCurrentPage() { /* ... unchanged ... */ }
-    
-    async function fetchData() {
-        console.log("fetchData: Initiating...");
-        if (tableBody) {
-            tableBody.innerHTML = '<tr><td colspan="7">جاري تحميل البيانات...</td></tr>';
-        } else {
-            console.error("fetchData: tableBody is NULL at start, cannot set loading message.");
+    function getThemeColor(cssVarName, fallbackColor) {
+        try {
+            if (typeof window !== 'undefined' && typeof document !== 'undefined' && document.documentElement) {
+                const color = getComputedStyle(document.documentElement).getPropertyValue(cssVarName).trim();
+                return color || fallbackColor;
+            }
+            return fallbackColor;
+        } catch (e) { return fallbackColor; }
+    }
+
+    // --- UPDATED getStatus function for robustness ---
+    function getStatus(dueDateStr) {
+        const defaultEventColors = { 
+            backgroundColor: 'rgba(200,200,200,0.7)', // Light grey for errors
+            borderColor: 'rgba(150,150,150,0.9)', 
+            textColor: '#333333' 
+        };
+        const defaultReturn = { 
+            text: "تاريخ غير صالح", 
+            classForTable: "status-error", 
+            isPast: false, 
+            isNear: false, 
+            eventColors: defaultEventColors // Ensure eventColors is always defined
+        };
+
+        if (!dueDateStr || typeof dueDateStr !== 'string' || !dueDateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+            console.warn("getStatus: Invalid dueDateStr format or type. Input:", dueDateStr);
+            return defaultReturn;
+        }
+        
+        const due = new Date(dueDateStr);
+        if (isNaN(due.getTime())) {
+            console.warn("getStatus: Failed to parse dueDateStr into valid date object. Input:", dueDateStr);
+            return defaultReturn;
+        }
+        const normalizedDue = new Date(due.getFullYear(), due.getMonth(), due.getDate());
+
+        // Define event colors, ensuring fallbacks if CSS variables are not found
+        const pastEvent = { 
+            backgroundColor: getThemeColor('--border-color-light', '#E9ECEF'), 
+            borderColor: getThemeColor('--border-color-light', '#D0D0D0'), 
+            textColor: getThemeColor('--text-muted-light', '#6C757D') 
+        };
+        const dueTodayEvent = { 
+            backgroundColor: getThemeColor('--accent-gold-muted', '#bd9a5f'), 
+            borderColor: getThemeColor('--accent-gold-muted', '#bd9a5f'), 
+            textColor: '#FFFFFF' 
+        };
+        const upcomingEvent = { 
+            backgroundColor: getThemeColor('--accent-blue-calendar-event', '#AEC6CF'), 
+            borderColor: getThemeColor('--accent-blue-calendar-event', '#AEC6CF'), 
+            textColor: getThemeColor('--primary-dark-light', '#2C3E50') 
+        };
+        const futureEvent = { 
+            backgroundColor: getThemeColor('--accent-green-event', '#F5F5F5'), 
+            borderColor: getThemeColor('--accent-green-event', '#E0E0E0'), 
+            textColor: getThemeColor('--text-muted-light', '#6C757D') 
+        };
+
+        if (normalizedDue < today) return { text: "منتهي", classForTable: "status-past", isPast: true, isNear: false, eventColors: pastEvent };
+        if (normalizedDue.getTime() === today.getTime()) return { text: "مستحق اليوم", classForTable: "status-due", isPast: false, isNear: true, eventColors: dueTodayEvent };
+        if (normalizedDue > today && normalizedDue <= threeDaysLater) return { text: "قادم قريباً", classForTable: "status-upcoming", isPast: false, isNear: true, eventColors: upcomingEvent };
+        return { text: "قادم", classForTable: "status-future", isPast: false, isNear: false, eventColors: futureEvent };
+    }
+
+    function createMailtoLink(reportTitle) { /* ... as before ... */ }
+    function createCharts(dataForCharts) { /* ... as before ... */ }
+    function populateTable(reportsToShow) { /* ... as before ... */ }
+    function updateKPIs(currentBaseFilteredData, currentDateRangeFilteredData) { /* ... as before ... */ }
+    function displayPagination(totalRows) { /* ... as before ... */ }
+    function populateFilter(data) { /* ... as before ... */ }
+    function renderCurrentPage() { /* ... as before ... */ }
+    async function fetchData() { /* ... as before ... */ }
+    function handleFilterAndSearch() { /* ... as before ... */ }
+    function resetDateFilter() { /* ... as before ... */ }
+    // No theme functions
+    function initializeCalendar() {
+        console.log("initializeCalendar: CALLED. Calendar Initialized Flag:", calendarInitialized, "Calendar Element:", !!calendarEl);
+        if (!calendarEl) {
+            console.error("initializeCalendar: calendarEl is NULL. Cannot initialize.");
+            return;
+        }
+        if (!Array.isArray(allReportsData) || allReportsData.length === 0) {
+            console.warn("initializeCalendar: No base data (allReportsData). Cannot populate calendar.");
+            calendarEl.innerHTML = "<p style='text-align:center; padding:20px;'>لا توجد بيانات أساسية لعرضها في التقويم.</p>";
+            if (calendarInstance) { calendarInstance.destroy(); calendarInstance = null; calendarInitialized = false;}
+            return;
+        }
+        calendarEl.innerHTML = ''; 
+
+        const searchTerm = searchInput ? searchInput.value.toLowerCase() : "";
+        const selectedDept = departmentFilter ? departmentFilter.value : "all";
+        
+        const calendarData = allReportsData.filter(report => {
+            if (!report || !Array.isArray(report) || report.length < 3) return false;
+            const reportDept = String(report[1] || ""); 
+            const reportTitle = String(report[2] || ""); 
+            const matchesSearch = reportDept.toLowerCase().includes(searchTerm) || 
+                                  reportTitle.toLowerCase().includes(searchTerm);
+            const matchesDept = (selectedDept === 'all') || (reportDept === selectedDept);
+            return matchesSearch && matchesDept;
+        });
+        console.log("initializeCalendar: Data for calendar (after search/dept filter). Count:", calendarData.length);
+
+        const calendarEvents = calendarData.map((report, index) => {
+            // console.log(`initializeCalendar: Processing report index ${index} for event:`, report); // Can be too verbose
+            if (!Array.isArray(report) || report.length < 5) { 
+                console.warn(`initializeCalendar: Skipping invalid report structure at index ${index}:`, report);
+                return null; 
+            }
+            const reportId = report[0];
+            const reportTitle = report[2];
+            const reportDate = report[4]; // This is the date string
+            
+            // console.log(`initializeCalendar: Report ID ${reportId}, Date to process: "${reportDate}", Title: "${reportTitle}"`);
+
+            const statusInfo = getStatus(reportDate); 
+            
+            // CRITICAL LOGGING: Check what getStatus returns
+            // console.log(`initializeCalendar: For report ID ${reportId}, statusInfo from getStatus:`, JSON.stringify(statusInfo));
+
+            if (!statusInfo || !statusInfo.eventColors || typeof statusInfo.text !== 'string') { 
+                console.warn(`initializeCalendar: Invalid or incomplete statusInfo for report ID ${reportId}. statusInfo:`, statusInfo, `Using default event.`);
+                // Fallback event if statusInfo is bad, to still show something
+                return {
+                    id: reportId, title: reportTitle + " (خطأ في الحالة)", start: reportDate, allDay: true,
+                    backgroundColor: 'red', borderColor: 'darkred', textColor: 'white',
+                    extendedProps: { id:reportId, department: report[1], frequency: report[3], statusText: "خطأ", fullReport: report }
+                };
+            }
+            return {
+                id: reportId, title: reportTitle, start: reportDate, allDay: true,
+                backgroundColor: statusInfo.eventColors.backgroundColor,
+                borderColor: statusInfo.eventColors.borderColor,
+                textColor: statusInfo.eventColors.textColor,
+                extendedProps: { id:reportId, department: report[1], frequency: report[3], statusText: statusInfo.text, fullReport: report }
+            };
+        }).filter(event => event !== null); 
+
+        console.log("initializeCalendar: Processed calendarEvents array. Final Count:", calendarEvents.length);
+        if (calendarEvents.length > 0) {
+            console.log("initializeCalendar: Sample of first processed calendarEvent:", JSON.stringify(calendarEvents[0]));
+        } else if (calendarData.length > 0) { // If there was data but no events were made
+            console.warn("initializeCalendar: Had data for calendar but NO valid events were created. Check getStatus logic and data integrity (especially dates).");
         }
 
+        if (calendarInstance) calendarInstance.destroy();
         try {
-            const response = await fetch(dataUrl);
-            console.log("fetchData: Response received. Status:", response.status, "Ok:", response.ok);
-            if (!response.ok) {
-                console.error("fetchData: Network error! Status:", response.status, response.statusText);
-                if (tableBody) tableBody.innerHTML = `<tr><td colspan="7">فشل تحميل البيانات (خطأ شبكة: ${response.status}).</td></tr>`;
-                updateKPIs([], []); 
-                return; 
-            }
-            allReportsData = await response.json();
-            console.log("fetchData: Data parsed successfully. Type:", typeof allReportsData, "Is Array:", Array.isArray(allReportsData), "Length:", allReportsData ? allReportsData.length : 'N/A'); 
-            // console.log("fetchData: Sample of first 2 reports:", JSON.stringify(allReportsData.slice(0,2)));
-            
-            if (Array.isArray(allReportsData) && allReportsData.length > 0) {
-                console.log("fetchData: Data is valid. Populating filter and rendering initial page.");
-                if(departmentFilter) { populateFilter(allReportsData); } else { console.error("fetchData: departmentFilter is NULL."); }
-                renderCurrentPage(); 
-                console.log("fetchData: Initial page render process complete.");
-            } else {
-                console.warn("fetchData: Data is empty or not an array after parsing.");
-                if (tableBody) tableBody.innerHTML = '<tr><td colspan="7">لا توجد بيانات لعرضها (البيانات فارغة أو غير صحيحة).</td></tr>';
-                updateKPIs([], []); 
-            }
-        } catch (error) {
-            console.error('fetchData: CRITICAL ERROR during fetch or JSON parsing:', error);
-            if (tableBody) tableBody.innerHTML = `<tr><td colspan="7">خطأ فادح في تحميل أو معالجة البيانات: ${error.message}</td></tr>`;
-            updateKPIs([], []);
+            calendarInstance = new FullCalendar.Calendar(calendarEl, {
+                locale: 'ar', 
+                headerToolbar: { right: 'prev,next today', center: 'title', left: 'dayGridMonth,timeGridWeek,listWeek' },
+                initialView: 'dayGridMonth',
+                events: calendarEvents,
+                eventDisplay: 'block', 
+                eventTextColor: function(eventInfo){ return eventInfo.event.textColor; },
+                eventDidMount: function(info) {
+                    if (info.event.backgroundColor) info.el.style.setProperty('background-color', info.event.backgroundColor, 'important');
+                    if (info.event.borderColor) info.el.style.setProperty('border-color', info.event.borderColor, 'important');
+                },
+                eventClick: function(info) { /* ... as before ... */ }
+            });
+            calendarInstance.render();
+            calendarInitialized = true; 
+            console.log("initializeCalendar: Calendar RENDERED successfully with", calendarEvents.length, "events.");
+        } catch(e) {
+            console.error("initializeCalendar: ERROR during FullCalendar instantiation or render:", e);
+            calendarEl.innerHTML = "<p style='text-align:center; padding:20px;'>حدث خطأ أثناء عرض التقويم.</p>";
         }
     }
 
-    function handleFilterAndSearch() { /* ... unchanged ... */ }
-    function resetDateFilter() { /* ... unchanged ... */ }
-    // Theme functions removed
-    function initializeCalendar() { /* ... unchanged ... */ }
-    function destroyCalendar() { /* ... unchanged ... */ }
-    
+    function destroyCalendar() { /* ... as before ... */ }
     if(closeModalButton) closeModalButton.onclick = function() { if(eventModal) eventModal.style.display = "none"; }
     if(eventModal) window.onclick = function(event) { if (eventModal && event.target == eventModal) eventModal.style.display = "none"; }
-
-    function handleNavigation(event) {
-        event.preventDefault();
-        console.log("--- handleNavigation START --- Target:", event.target.closest('li[data-view]'));
-        const clickedLi = event.target.closest('li[data-view]');
-        
-        if (!clickedLi) {
-            console.log("handleNavigation: No valid LI clicked.");
-            return;
-        }
-        // Allow re-click for calendar/analytics to refresh IF data is loaded
-        if (clickedLi.classList.contains('active') && 
-            clickedLi.dataset.view !== 'calendar' && 
-            clickedLi.dataset.view !== 'analytics') { 
-            console.log("handleNavigation: Clicked LI is already active and not calendar/analytics.");
-            return;
-        }
-        
-        const viewId = clickedLi.dataset.view;
-        console.log("handleNavigation: Navigating to viewId:", viewId);
-
-        if(navLinks) navLinks.forEach(link => link.classList.remove('active'));
-        if(views) views.forEach(view => view.classList.remove('active-view'));
-        
-        if(clickedLi) clickedLi.classList.add('active');
-        const targetView = document.getElementById(`${viewId}-section`);
-        if (targetView) {
-            targetView.classList.add('active-view');
-            console.log("handleNavigation: View activated:", viewId);
-        } else { 
-            console.error("handleNavigation: Target view element not found for ID:", `${viewId}-section`);
-            return; 
-        }
-        
-        // Ensure allReportsData is populated before trying to create charts or calendar
-        if (!allReportsData || allReportsData.length === 0) {
-            console.warn(`handleNavigation: allReportsData is empty. Cannot populate ${viewId} view yet.`);
-            if (viewId === 'calendar' && calendarEl) {
-                calendarEl.innerHTML = "<p style='text-align:center; padding:20px;'>البيانات الأساسية غير متوفرة بعد.</p>";
-            }
-            // Similarly for analytics if canvases are directly manipulated before data
-            return;
-        }
-
-        if (viewId === 'analytics') {
-            console.log("handleNavigation: Analytics tab processing.");
-            const currentSearchTerm = searchInput ? searchInput.value.toLowerCase() : "";
-            const currentSelectedDept = departmentFilter ? departmentFilter.value : "all";
-            const chartData = allReportsData.filter(report => { 
-                if (!report || !Array.isArray(report) || report.length < 3) return false;
-                const matchesSearch = (report[1] && String(report[1]).toLowerCase().includes(currentSearchTerm)) || 
-                                    (report[2] && String(report[2]).toLowerCase().includes(currentSearchTerm));
-                const matchesDept = (currentSelectedDept === 'all') || (report[1] === currentSelectedDept);
-                return matchesSearch && matchesDept;
-            });
-            createCharts(chartData); 
-        }
-
-        if (viewId === 'calendar') {
-            console.log("handleNavigation: Calendar tab processing.");
-            initializeCalendar(); 
-        }
-        console.log("--- handleNavigation END for view:", viewId, "---");
-    }
+    function handleNavigation(event) { /* ... as before ... */ }
 
     // Event Listeners
-    console.log("Attaching event listeners...");
+    // console.log("Attaching event listeners...");
     if(searchInput) searchInput.addEventListener('input', handleFilterAndSearch);
     if(departmentFilter) departmentFilter.addEventListener('change', handleFilterAndSearch);
     if(startDateInput) startDateInput.addEventListener('change', handleFilterAndSearch);
@@ -185,17 +239,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Removed themeSwitcherBtn listener
     if(navLinks && navLinks.length > 0) {
         navLinks.forEach((link) => { if (link) link.addEventListener('click', handleNavigation); });
-        console.log(`${navLinks.length} navigation listeners attached.`);
-    } else { console.warn("No navLinks found for attaching listeners."); }
+    }
 
     // Initial Setup
-    console.log("Initial Setup: About to call fetchData(). Current Time:", new Date().toLocaleTimeString());
-    try {
-        fetchData(); // This is an async function
-        console.log("Initial Setup: fetchData() has been called. Any further console logs from fetchData will appear above if it runs correctly.");
-    } catch(e) {
-        console.error("Initial Setup: Error directly calling fetchData():", e);
-    }
-    console.log("Initial Setup: Script execution finished (DOMContentLoaded complete).");
-
+    console.log("Running initial setup: Fetching data.");
+    fetchData();
 });
