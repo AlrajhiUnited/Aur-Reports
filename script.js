@@ -13,6 +13,8 @@ const recipientEmail = 'shamdan@aur.com.sa';
 let departmentChartInstance = null;
 let frequencyChartInstance = null;
 let calendarInstance = null;
+let timelineInstance = null; // For Vis.js Timeline
+let timelineReferenceDate = new Date(systemBaseDate); // For "Time Travel" feature, defaults to systemBaseDate
 
 // State for KPI filter
 let activeKpiFilterType = null;
@@ -57,30 +59,45 @@ const modalStatus = document.getElementById('modal-status');
 const modalEmailButton = document.getElementById('modal-email-button');
 let currentModalReport = null;
 
+// Timeline DOM Elements
+const timelineContainer = document.getElementById('visualization-timeline');
+const timelineLoadingMessage = document.getElementById('timeline-loading-message');
+const timelineZoomInButton = document.getElementById('timeline-zoom-in');
+const timelineZoomOutButton = document.getElementById('timeline-zoom-out');
+const timelinePrevButton = document.getElementById('timeline-prev');
+const timelineNextButton = document.getElementById('timeline-next');
+const timelineTodayButton = document.getElementById('timeline-today');
+const timeTravelDatePicker = document.getElementById('time-travel-date-picker');
+const timeTravelDisplay = document.getElementById('time-travel-display');
+
+
 // --- Utility Functions ---
 function getToday() {
-    // Returns the systemBaseDate with time set to 00:00:00 for consistent day comparisons
     return new Date(systemBaseDate.getFullYear(), systemBaseDate.getMonth(), systemBaseDate.getDate());
 }
 
 function diffInDays(date1Str, date2) {
-    // date1Str is expected to be 'YYYY-MM-DD'
-    // date2 is a Date object (typically 'today')
-    const d1 = new Date(date1Str); // Convert string to Date
-    // Ensure d1 is also at the start of its day for fair comparison
+    const d1 = new Date(date1Str);
     const d1StartOfDay = new Date(d1.getFullYear(), d1.getMonth(), d1.getDate());
     return Math.round((d1StartOfDay - date2) / (1000 * 60 * 60 * 24));
 }
 
-function getReportStatus(dueDateString) {
-    const today = getToday();
-    const diff = diffInDays(dueDateString, today);
+/**
+ * Determines the status of a report based on its due date and a reference date.
+ * @param {string} dueDateString - The due date of the report (YYYY-MM-DD).
+ * @param {Date} referenceDate - The date to compare against (e.g., systemBaseDate or timelineReferenceDate).
+ * @returns {object} An object with status text, CSS class, and isPastDue boolean.
+ */
+function getReportStatusWithReference(dueDateString, referenceDate) {
+    const refDateStartOfDay = new Date(referenceDate.getFullYear(), referenceDate.getMonth(), referenceDate.getDate());
+    const diff = diffInDays(dueDateString, refDateStartOfDay);
 
-    if (diff < 0) return { text: 'منتهي', class: 'status-past-due', isPastDue: true };
-    if (diff === 0) return { text: 'مستحق اليوم', class: 'status-due-today', isPastDue: false };
-    if (diff > 0 && diff <= 2) return { text: 'قادم قريباً', class: 'status-due-soon', isPastDue: false };
-    return { text: 'قادم', class: 'status-upcoming', isPastDue: false };
+    if (diff < 0) return { text: 'منتهي', class: 'status-past-due', timelineClass: 'timeline-item-past-due', isPastDue: true };
+    if (diff === 0) return { text: 'مستحق اليوم', class: 'status-due-today', timelineClass: 'timeline-item-due-today', isPastDue: false };
+    if (diff > 0 && diff <= 2) return { text: 'قادم قريباً', class: 'status-due-soon', timelineClass: 'timeline-item-due-soon', isPastDue: false };
+    return { text: 'قادم', class: 'status-upcoming', timelineClass: 'timeline-item-upcoming', isPastDue: false };
 }
+
 
 // --- Data Fetching and Processing ---
 async function fetchData() {
@@ -97,12 +114,19 @@ async function fetchData() {
         console.log('Data fetched successfully:', data.length, 'reports');
 
         allReports = data.map(item => ({
-            id: item[0],
+            id: item[0], // Vis.js needs unique IDs, ensure report IDs are unique
             department: item[1],
             title: item[2],
             frequency: item[3],
-            dueDate: item[4], // Keep as YYYY-MM-DD string
+            dueDate: item[4],
         }));
+
+        // Initialize time travel picker
+        if (timeTravelDatePicker) {
+            timeTravelDatePicker.value = timelineReferenceDate.toISOString().split('T')[0];
+            updateTimeTravelDisplay();
+        }
+
 
         populateDepartmentFilter();
         applyAllFiltersAndRender();
@@ -148,7 +172,8 @@ function populateTable() {
     } else {
         paginatedReports.forEach(report => {
             const row = reportsTableBody.insertRow();
-            const statusInfo = getReportStatus(report.dueDate);
+            // For table, status is always relative to systemBaseDate
+            const statusInfo = getReportStatusWithReference(report.dueDate, getToday());
 
             row.insertCell().textContent = report.id;
             row.insertCell().textContent = report.department;
@@ -213,21 +238,20 @@ function displayPagination() {
 }
 
 function updateKPIs() {
-    const today = getToday();
+    const today = getToday(); // System's "today"
+
     // KPIs are calculated from filteredReportsBase (search + department, all statuses)
-    // Then, for display values, we consider non-past-due unless it's the "past due" KPI itself.
+    const nonPastDueReportsForKpi = filteredReportsBase.filter(r => !getReportStatusWithReference(r.dueDate, today).isPastDue);
+    const pastDueReportsForKpi = filteredReportsBase.filter(r => getReportStatusWithReference(r.dueDate, today).isPastDue);
 
-    const nonPastDueReports = filteredReportsBase.filter(r => !getReportStatus(r.dueDate).isPastDue);
-    const pastDueReportsKpi = filteredReportsBase.filter(r => getReportStatus(r.dueDate).isPastDue);
-
-    kpiTotalReportsValue.textContent = nonPastDueReports.length; // "إجمالي التقارير" now means non-past-due
+    kpiTotalReportsValue.textContent = nonPastDueReportsForKpi.length;
 
     const startDateValue = startDateInput.value ? new Date(startDateInput.value) : null;
     const endDateValue = endDateInput.value ? new Date(endDateInput.value) : null;
     if (endDateValue) endDateValue.setHours(23, 59, 59, 999);
 
     if (startDateValue && endDateValue) {
-        const reportsInPeriodForKpi = nonPastDueReports.filter(report => {
+        const reportsInPeriodForKpi = nonPastDueReportsForKpi.filter(report => {
             const dueDate = new Date(report.dueDate);
             return dueDate >= startDateValue && dueDate <= endDateValue;
         });
@@ -236,15 +260,14 @@ function updateKPIs() {
         kpiPeriodReportsValue.textContent = '-';
     }
 
-    kpiDueTodayValue.textContent = nonPastDueReports.filter(r => diffInDays(r.dueDate, today) === 0).length;
-    kpiDueSoonValue.textContent = nonPastDueReports.filter(r => {
+    kpiDueTodayValue.textContent = nonPastDueReportsForKpi.filter(r => diffInDays(r.dueDate, today) === 0).length;
+    kpiDueSoonValue.textContent = nonPastDueReportsForKpi.filter(r => {
         const diff = diffInDays(r.dueDate, today);
         return diff >= 0 && diff <= 2;
     }).length;
-    kpiPastDueValue.textContent = pastDueReportsKpi.length; // This KPI is specifically for past due
+    kpiPastDueValue.textContent = pastDueReportsForKpi.length;
 
-    // Notification dot considers non-past-due reports that are due today or soon
-    const upcomingOrDueTodayForNotification = nonPastDueReports.filter(r => {
+    const upcomingOrDueTodayForNotification = nonPastDueReportsForKpi.filter(r => {
         const diff = diffInDays(r.dueDate, today);
         return diff >= 0 && diff <= 2;
     }).length;
@@ -271,7 +294,7 @@ function updateKPIs() {
 function applyAllFiltersAndRender() {
     const searchTerm = searchInput.value.toLowerCase().trim();
     const selectedDepartment = departmentFilter.value;
-    const today = getToday();
+    const today = getToday(); // System's "today" for default status checks
 
     // Step 1: Base filter (search, department) - includes all statuses
     filteredReportsBase = allReports.filter(report => {
@@ -282,19 +305,19 @@ function applyAllFiltersAndRender() {
         return matchesSearch && matchesDepartment;
     });
 
-    // Step 2: Determine data for Charts and Calendar
+    // Step 2: Determine data for Charts, Calendar, and Timeline (based on systemBaseDate for status)
     if (activeKpiFilterType === 'past_due') {
-        reportsForChartsAndCalendar = filteredReportsBase.filter(r => getReportStatus(r.dueDate).isPastDue);
+        reportsForChartsAndCalendar = filteredReportsBase.filter(r => getReportStatusWithReference(r.dueDate, today).isPastDue);
     } else {
-        reportsForChartsAndCalendar = filteredReportsBase.filter(r => !getReportStatus(r.dueDate).isPastDue);
+        // For all other KPI filters or no KPI filter, charts/calendar show non-past-due relative to systemBaseDate
+        reportsForChartsAndCalendar = filteredReportsBase.filter(r => !getReportStatusWithReference(r.dueDate, today).isPastDue);
     }
 
     // Step 3: Determine data for Table Display
     if (activeKpiFilterType) {
         switch (activeKpiFilterType) {
             case 'total_reports':
-                // Shows non-past-due reports matching search/dept
-                reportsForDisplayInTable = reportsForChartsAndCalendar; // Which is already non-past-due
+                reportsForDisplayInTable = reportsForChartsAndCalendar; // Already non-past-due
                 break;
             case 'period_reports':
                 const startDateValue = startDateInput.value ? new Date(startDateInput.value) : null;
@@ -302,32 +325,27 @@ function applyAllFiltersAndRender() {
                 if (endDateValue) endDateValue.setHours(23, 59, 59, 999);
 
                 if (startDateValue && endDateValue) {
-                    // Shows non-past-due reports in date range
                     reportsForDisplayInTable = reportsForChartsAndCalendar.filter(report => {
                         const dueDate = new Date(report.dueDate);
                         return dueDate >= startDateValue && dueDate <= endDateValue;
                     });
                 } else {
-                     // If no date range, show all non-past-due (from reportsForChartsAndCalendar)
                     reportsForDisplayInTable = reportsForChartsAndCalendar;
                 }
                 break;
             case 'due_today':
-                // Shows non-past-due reports due today
                 reportsForDisplayInTable = reportsForChartsAndCalendar.filter(r => diffInDays(r.dueDate, today) === 0);
                 break;
             case 'due_soon':
-                // Shows non-past-due reports due in 0-2 days
                 reportsForDisplayInTable = reportsForChartsAndCalendar.filter(r => {
                     const diff = diffInDays(r.dueDate, today);
                     return diff >= 0 && diff <= 2;
                 });
                 break;
             case 'past_due':
-                // Shows only past-due reports
-                reportsForDisplayInTable = reportsForChartsAndCalendar; // Which is already past-due
+                reportsForDisplayInTable = reportsForChartsAndCalendar; // Already past-due
                 break;
-            default: // Should not happen
+            default:
                 reportsForDisplayInTable = reportsForChartsAndCalendar;
                 break;
         }
@@ -343,26 +361,24 @@ function applyAllFiltersAndRender() {
                 return dueDate >= startDateValue && dueDate <= endDateValue;
             });
         } else {
-            reportsForDisplayInTable = reportsForChartsAndCalendar; // Show all non-past-due if no date range
+            reportsForDisplayInTable = reportsForChartsAndCalendar;
         }
     }
 
     currentPage = 1;
     populateTable();
-    updateKPIs(); // KPIs are now calculated based on filteredReportsBase and then refined
+    updateKPIs();
 
     const activeViewId = document.querySelector('.view.active')?.id;
     if (activeViewId === 'analytics-section') renderAnalyticsCharts();
     if (activeViewId === 'calendar-section') renderFullCalendar();
+    if (activeViewId === 'timeline-section') renderTimeline(); // Render timeline if active
 }
 
 
 function resetDateFilter() {
     startDateInput.value = '';
     endDateInput.value = '';
-    // Clearing date filter should not automatically clear KPI filter
-    // The KPI filter will just apply to a broader set (if it was 'period_reports')
-    // or remain unaffected (if it was 'due_today', etc.)
     applyAllFiltersAndRender();
 }
 
@@ -372,7 +388,7 @@ function handleKpiCardClick(event) {
     const kpiName = clickedCard.querySelector('.kpi-label').textContent;
 
     if (activeKpiFilterType === kpiType) {
-        activeKpiFilterType = null; // Toggle off
+        activeKpiFilterType = null;
         activeKpiFilterName = '';
     } else {
         activeKpiFilterType = kpiType;
@@ -403,12 +419,12 @@ function handleNavigation(event) {
         if (view.id === viewId) {
             if (viewId === 'analytics-section') renderAnalyticsCharts();
             else if (viewId === 'calendar-section') renderFullCalendar();
+            else if (viewId === 'timeline-section') renderTimeline();
         }
     });
 }
 
 function renderAnalyticsCharts() {
-    // Charts now use reportsForChartsAndCalendar
     const dataForCharts = reportsForChartsAndCalendar;
 
     const departmentCounts = dataForCharts.reduce((acc, r) => ({ ...acc, [r.department]: (acc[r.department] || 0) + 1 }), {});
@@ -462,14 +478,12 @@ function renderFullCalendar() {
     const calendarEl = document.getElementById('calendar');
     if (!calendarEl) return;
 
-    // Calendar now uses reportsForChartsAndCalendar
     const eventsForCalendar = reportsForChartsAndCalendar.map(report => ({
         id: report.id,
         title: report.title,
         start: report.dueDate,
         allDay: true,
-        // backgroundColor and other styling handled by CSS .fc-event
-        extendedProps: { ...report, statusInfo: getReportStatus(report.dueDate) }
+        extendedProps: { ...report, statusInfo: getReportStatusWithReference(report.dueDate, getToday()) }
     }));
 
     if (calendarInstance) {
@@ -489,7 +503,7 @@ function renderFullCalendar() {
                 modalDepartment.textContent = currentModalReport.department;
                 modalFrequency.textContent = currentModalReport.frequency;
                 modalDueDate.textContent = currentModalReport.dueDate;
-                modalStatus.textContent = currentModalReport.statusInfo.text;
+                modalStatus.textContent = currentModalReport.statusInfo.text; // Status relative to systemBaseDate
                 modalStatus.className = `status-tag ${currentModalReport.statusInfo.class}`;
                 eventModal.style.display = 'block';
             },
@@ -498,22 +512,97 @@ function renderFullCalendar() {
     }
 }
 
+// --- Timeline Section ---
+function updateTimeTravelDisplay() {
+    if (timeTravelDisplay && timelineReferenceDate) {
+        timeTravelDisplay.textContent = `التاريخ المرجعي: ${timelineReferenceDate.toISOString().split('T')[0]}`;
+    }
+}
+
+function renderTimeline() {
+    if (!timelineContainer) return;
+    if (timelineLoadingMessage) timelineLoadingMessage.style.display = 'block';
+
+    // Data for timeline is reportsForChartsAndCalendar
+    // Status for timeline items will be relative to timelineReferenceDate
+    const items = new vis.DataSet(reportsForChartsAndCalendar.map(report => {
+        const statusInfo = getReportStatusWithReference(report.dueDate, timelineReferenceDate); // Status relative to timeline ref date
+        return {
+            id: report.id,
+            content: report.title,
+            start: report.dueDate, // Must be YYYY-MM-DD
+            className: statusInfo.timelineClass, // For status-based coloring
+            originalReport: report // Store original report for modal
+        };
+    }));
+
+    const options = {
+        locale: 'ar', // Basic localization for some elements if vis.js supports it
+        orientation: { item: 'top' },
+        editable: false,
+        selectable: true,
+        zoomMin: 1000 * 60 * 60 * 24 * 7, // Minimum zoom: 1 week
+        zoomMax: 1000 * 60 * 60 * 24 * 365 * 3, // Maximum zoom: 3 years
+        // Set initial window around the timelineReferenceDate
+        start: new Date(timelineReferenceDate.getFullYear(), timelineReferenceDate.getMonth() - 1, 1),
+        end: new Date(timelineReferenceDate.getFullYear(), timelineReferenceDate.getMonth() + 2, 1),
+        height: '400px', // Ensure height is set
+        // showCurrentTime: false, // We'll add a custom one for timelineReferenceDate
+    };
+
+    if (timelineInstance) {
+        timelineInstance.destroy(); // Destroy existing instance before creating new
+    }
+    timelineInstance = new vis.Timeline(timelineContainer, items, options);
+
+    // Add custom time bar for timelineReferenceDate
+    try {
+        timelineInstance.removeCustomTime('referenceDate');
+    } catch (e) { /* ignore if not found */ }
+    timelineInstance.addCustomTime(timelineReferenceDate, 'referenceDate');
+    timelineInstance.customTimes[timelineInstance.customTimes.length -1].hammer.off("pan"); // Make it non-draggable
+
+    timelineInstance.on('select', function (properties) {
+        if (properties.items.length > 0) {
+            const selectedReportId = properties.items[0];
+            const reportData = items.get(selectedReportId)?.originalReport;
+            if (reportData) {
+                currentModalReport = reportData; // Set for the modal
+                // Status for modal should be relative to systemBaseDate
+                const statusForModal = getReportStatusWithReference(reportData.dueDate, getToday());
+
+                modalTitle.textContent = reportData.title;
+                modalDepartment.textContent = reportData.department;
+                modalFrequency.textContent = reportData.frequency;
+                modalDueDate.textContent = reportData.dueDate;
+                modalStatus.textContent = statusForModal.text;
+                modalStatus.className = `status-tag ${statusForModal.class}`;
+                eventModal.style.display = 'block';
+            }
+        }
+    });
+    if (timelineLoadingMessage) timelineLoadingMessage.style.display = 'none';
+    console.log("Timeline rendered/updated");
+}
+
+
+// --- Modal Logic ---
 function closeModal() {
     if (eventModal) eventModal.style.display = 'none';
     currentModalReport = null;
 }
 
+// --- Event Listeners ---
 document.addEventListener('DOMContentLoaded', () => {
-    fetchData();
+    fetchData(); // This will also call applyAllFiltersAndRender
 
     document.querySelector('.sidebar-nav')?.addEventListener('click', handleNavigation);
 
     searchInput?.addEventListener('input', applyAllFiltersAndRender);
     departmentFilter?.addEventListener('change', applyAllFiltersAndRender);
-    // Date inputs now also trigger applyAllFiltersAndRender, which will respect activeKpiFilterType
     startDateInput?.addEventListener('change', applyAllFiltersAndRender);
     endDateInput?.addEventListener('change', applyAllFiltersAndRender);
-    resetDateFilterButton?.addEventListener('click', resetDateFilter); // resetDateFilter calls applyAllFiltersAndRender
+    resetDateFilterButton?.addEventListener('click', resetDateFilter);
 
     Object.values(kpiCards).forEach(card => card?.addEventListener('click', handleKpiCardClick));
     clearKpiFilterButton?.addEventListener('click', clearActiveKpiFilter);
@@ -528,7 +617,28 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // Timeline controls
+    timelineZoomInButton?.addEventListener('click', () => timelineInstance?.zoomIn(0.5));
+    timelineZoomOutButton?.addEventListener('click', () => timelineInstance?.zoomOut(0.5));
+    timelinePrevButton?.addEventListener('click', () => timelineInstance?.move(-0.3));
+    timelineNextButton?.addEventListener('click', () => timelineInstance?.move(0.3));
+    timelineTodayButton?.addEventListener('click', () => {
+        if (timelineInstance) {
+            timelineInstance.moveTo(timelineReferenceDate);
+        }
+    });
+    timeTravelDatePicker?.addEventListener('change', (event) => {
+        const newDate = new Date(event.target.value);
+        if (!isNaN(newDate)) {
+            timelineReferenceDate = newDate;
+            updateTimeTravelDisplay();
+            if (document.getElementById('timeline-section').classList.contains('active')) {
+                renderTimeline(); // Re-render with new reference date for item coloring and focus
+            }
+        }
+    });
+
+
     document.querySelector('.nav-item[data-view="overview-section"]')?.classList.add('active');
     document.getElementById('overview-section')?.classList.add('active');
 });
-
