@@ -340,8 +340,6 @@ body {
 .notifications-dropdown {
     position: absolute;
     top: calc(100% + 8px); 
-    left: 0; /* For RTL, this aligns to the "start" of the parent */
-    right: auto; /* Ensure it doesn't try to align right by default */
     width: 320px;
     background-color: var(--card-bg-light);
     border: 1px solid var(--border-color-light);
@@ -354,13 +352,17 @@ body {
     opacity: 0;
     visibility: hidden;
     transform: translateY(-10px) scale(0.95);
-    transform-origin: top left; /* Correct for LTR default, will be overridden for RTL */
     transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out, visibility 0s linear 0.2s;
 }
 html[dir="rtl"] .notifications-dropdown {
-    left: auto; /* Override LTR default */
-    right: 0;   /* Align to the right for RTL */
-    transform-origin: top right; /* Correct transform origin for RTL */
+    left: auto; 
+    right: 0;   
+    transform-origin: top right; 
+}
+html:not([dir="rtl"]) .notifications-dropdown {
+    left: 0;
+    right: auto;
+    transform-origin: top left;
 }
 
 
