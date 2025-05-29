@@ -10,7 +10,7 @@
     --primary-dark-light: #2C3E50;
 
     --accent-gold: #C89638;
-    --accent-gold-muted: #bd9a5f;
+    --accent-gold-muted: #bd9a5f; /* Used for active filter states */
     --accent-gold-hover: rgba(200, 150, 56, 0.1);
     --accent-gold-text-on-gold-bg: #FFFFFF;
 
@@ -182,7 +182,7 @@ body {
 }
 
 .month-filter-btn.active {
-    background-color: var(--accent-gold-muted);
+    background-color: var(--accent-gold-muted); 
     color: var(--accent-gold-text-on-gold-bg);
     border-color: var(--accent-gold-muted);
     font-weight: bold;
@@ -252,7 +252,7 @@ body {
     box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     position: sticky;
     top: 0;
-    z-index: 900;
+    z-index: 900; /* Ensure top bar is above content but below dropdowns/modals */
 }
 
 .top-bar h1 {
@@ -309,8 +309,8 @@ body {
 
 /* Notifications Dropdown Styles */
 .notifications-container {
-    position: relative;
-    display: inline-block; /* Or flex if needed for alignment with other controls */
+    position: relative; /* Crucial for absolute positioning of dropdown */
+    display: inline-block; 
 }
 
 #notifications-btn {
@@ -339,25 +339,27 @@ body {
 
 .notifications-dropdown {
     position: absolute;
-    top: calc(100% + 5px); /* Position below the button */
-    left: 0; /* Align with the left edge of the container */
-    width: 320px; /* Adjust width as needed */
+    top: calc(100% + 8px); /* Position below the button with a small gap */
+    left: 0; 
+    width: 320px;
     background-color: var(--card-bg-light);
     border: 1px solid var(--border-color-light);
     border-radius: 8px;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.15);
-    z-index: 1010; /* Ensure it's above other content */
+    box-shadow: 0 6px 12px rgba(0,0,0,0.18); /* Enhanced shadow */
+    z-index: 1050; /* Ensure it's above other content, including top-bar */
     max-height: 400px;
     overflow-y: auto;
     opacity: 0;
     visibility: hidden;
-    transform: translateY(-10px);
-    transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out, visibility 0.2s;
+    transform: translateY(-10px) scale(0.95); /* Initial state for transition */
+    transform-origin: top left; /* For RTL, origin should be top right if aligning right */
+    transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out, visibility 0s linear 0.2s; /* Delay visibility transition */
 }
 .notifications-dropdown.show {
     opacity: 1;
     visibility: visible;
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
+    transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out, visibility 0s linear 0s;
 }
 
 
@@ -378,7 +380,7 @@ body {
 #notifications-list li {
     padding: 10px 15px;
     border-bottom: 1px solid var(--border-color-light);
-    cursor: default; /* Or pointer if clickable */
+    cursor: pointer; /* Make items clickable */
     transition: background-color 0.2s ease;
 }
 #notifications-list li:last-child {
@@ -405,7 +407,7 @@ body {
     padding: 2px 6px;
     border-radius: 10px;
     color: white;
-    align-self: flex-start; /* Align tag to the start of its line */
+    align-self: flex-start; 
 }
 
 
@@ -824,9 +826,9 @@ body {
     .charts-container {
         grid-template-columns: 1fr;
     }
-    .notifications-dropdown { /* Adjust dropdown position on smaller screens if needed */
+     .notifications-dropdown { 
         left: auto;
-        right: 0; /* Align to right if top-bar controls stack or change */
+        right: 0; 
         width: 280px;
     }
 }
@@ -921,19 +923,23 @@ body {
     }
     .top-bar-controls {
         width: 100%;
-        /* flex-direction: column; Let it wrap naturally or adjust gap */
-        /* align-items: stretch; */
-        /* gap: 10px; */
     }
-    .top-bar-controls input[type="search"] {
-        /* width: 100%; */
+    .notifications-container { /* Ensure it takes space in the flex layout */
+        margin-left: auto; /* Pushes to the right in LTR, works with flex-direction row */
     }
-     .notifications-container {
-        margin-right: auto; /* Push to the end in LTR, start in RTL */
+     .notifications-dropdown {
+        left: 0; /* Align to the left of its container */
+        right: auto;
     }
-    .notifications-dropdown {
-        left: 0;
-        right: auto; /* Ensure it aligns with its container */
+    @media (max-width: 768px) and (min-width: 481px) {
+        .top-bar-controls { /* For tablet, keep controls in a row but allow wrap */
+            flex-direction: row;
+            flex-wrap: wrap;
+            justify-content: space-between;
+        }
+        .notifications-container {
+             margin-left: 0; /* Reset margin if it's part of a wrapping row */
+        }
     }
 
 
@@ -1004,13 +1010,13 @@ body {
         width: 100%;
     }
     .notifications-container {
-        width: 100%; /* Full width for easier tapping */
-        display: flex; /* To align button if needed */
-        justify-content: flex-end; /* Align bell button to right */
+        width: 100%; 
+        display: flex; 
+        justify-content: flex-end; 
     }
     .notifications-dropdown {
-        width: calc(100% - 20px); /* Adjust width for small screens */
-        left: 10px; /* Center it slightly */
+        width: calc(100% - 20px); 
+        left: 10px; 
         right: 10px;
     }
 }
