@@ -10,7 +10,7 @@
     --primary-dark-light: #2C3E50;
 
     --accent-gold: #C89638;
-    --accent-gold-muted: #bd9a5f; /* Used for active filter states */
+    --accent-gold-muted: #bd9a5f;
     --accent-gold-hover: rgba(200, 150, 56, 0.1);
     --accent-gold-text-on-gold-bg: #FFFFFF;
 
@@ -182,7 +182,7 @@ body {
 }
 
 .month-filter-btn.active {
-    background-color: var(--accent-gold-muted); /* Consistent active color */
+    background-color: var(--accent-gold-muted);
     color: var(--accent-gold-text-on-gold-bg);
     border-color: var(--accent-gold-muted);
     font-weight: bold;
@@ -307,6 +307,12 @@ body {
     box-shadow: 0 0 0 0.2rem var(--accent-gold-hover);
 }
 
+/* Notifications Dropdown Styles */
+.notifications-container {
+    position: relative;
+    display: inline-block; /* Or flex if needed for alignment with other controls */
+}
+
 #notifications-btn {
     background: none;
     border: none;
@@ -330,6 +336,100 @@ body {
     border-radius: 50%;
     border: 1px solid white;
 }
+
+.notifications-dropdown {
+    position: absolute;
+    top: calc(100% + 5px); /* Position below the button */
+    left: 0; /* Align with the left edge of the container */
+    width: 320px; /* Adjust width as needed */
+    background-color: var(--card-bg-light);
+    border: 1px solid var(--border-color-light);
+    border-radius: 8px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.15);
+    z-index: 1010; /* Ensure it's above other content */
+    max-height: 400px;
+    overflow-y: auto;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out, visibility 0.2s;
+}
+.notifications-dropdown.show {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+
+.notifications-header {
+    padding: 12px 15px;
+    font-weight: bold;
+    color: var(--primary-dark-light);
+    border-bottom: 1px solid var(--border-color-light);
+    font-size: 0.95rem;
+}
+
+#notifications-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+#notifications-list li {
+    padding: 10px 15px;
+    border-bottom: 1px solid var(--border-color-light);
+    cursor: default; /* Or pointer if clickable */
+    transition: background-color 0.2s ease;
+}
+#notifications-list li:last-child {
+    border-bottom: none;
+}
+#notifications-list li:hover {
+    background-color: var(--accent-gold-hover);
+}
+#notifications-list .notification-title {
+    display: block;
+    font-weight: bold;
+    color: var(--text-color-light);
+    font-size: 0.9rem;
+    margin-bottom: 3px;
+}
+#notifications-list .notification-details {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--text-muted-light);
+    margin-bottom: 5px;
+}
+#notifications-list .notification-status-tag {
+    font-size: 0.7rem;
+    padding: 2px 6px;
+    border-radius: 10px;
+    color: white;
+    align-self: flex-start; /* Align tag to the start of its line */
+}
+
+
+.notifications-footer {
+    padding: 10px 15px;
+    text-align: center;
+    border-top: 1px solid var(--border-color-light);
+}
+.notifications-footer a {
+    color: var(--accent-gold);
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: bold;
+}
+.notifications-footer a:hover {
+    text-decoration: underline;
+}
+.no-notifications {
+    padding: 20px 15px;
+    text-align: center;
+    color: var(--text-muted-light);
+    font-size: 0.9rem;
+}
+
 
 /* --- Content Wrapper & View Sections --- */
 .content-wrapper {
@@ -724,6 +824,11 @@ body {
     .charts-container {
         grid-template-columns: 1fr;
     }
+    .notifications-dropdown { /* Adjust dropdown position on smaller screens if needed */
+        left: auto;
+        right: 0; /* Align to right if top-bar controls stack or change */
+        width: 280px;
+    }
 }
 
 @media (max-width: 768px) {
@@ -816,18 +921,21 @@ body {
     }
     .top-bar-controls {
         width: 100%;
-        flex-direction: column;
-        align-items: stretch;
-        gap: 10px;
+        /* flex-direction: column; Let it wrap naturally or adjust gap */
+        /* align-items: stretch; */
+        /* gap: 10px; */
     }
-    .top-bar-controls input[type="search"],
-    #department-filter {
-        width: 100%;
+    .top-bar-controls input[type="search"] {
+        /* width: 100%; */
     }
-    #notifications-btn {
-        align-self: flex-end;
-        margin-bottom: 0;
+     .notifications-container {
+        margin-right: auto; /* Push to the end in LTR, start in RTL */
     }
+    .notifications-dropdown {
+        left: 0;
+        right: auto; /* Ensure it aligns with its container */
+    }
+
 
     .kpi-cards-container {
         grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -887,5 +995,22 @@ body {
     }
     #workplace-badge {
         max-width: 70px;
+    }
+    .top-bar-controls {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .top-bar-controls input[type="search"], #department-filter {
+        width: 100%;
+    }
+    .notifications-container {
+        width: 100%; /* Full width for easier tapping */
+        display: flex; /* To align button if needed */
+        justify-content: flex-end; /* Align bell button to right */
+    }
+    .notifications-dropdown {
+        width: calc(100% - 20px); /* Adjust width for small screens */
+        left: 10px; /* Center it slightly */
+        right: 10px;
     }
 }
