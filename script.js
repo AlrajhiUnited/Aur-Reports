@@ -479,17 +479,24 @@ function updateMonthFilterButtonsUI() {
 
 // --- Notifications Dropdown Logic ---
 function toggleNotificationsDropdown() {
-    if (!notificationsDropdown) return; // Ensure element exists
+    console.log("toggleNotificationsDropdown called"); // DEBUG
+    if (!notificationsDropdown) {
+        console.error("notificationsDropdown element not found!"); // DEBUG
+        return;
+    }
     const isShown = notificationsDropdown.classList.contains('show');
+    console.log("Is dropdown shown before toggle?", isShown); // DEBUG
     if (isShown) {
         notificationsDropdown.classList.remove('show');
     } else {
-        populateNotificationsDropdown(); // Populate before showing
+        populateNotificationsDropdown(); 
         notificationsDropdown.classList.add('show');
     }
+    console.log("Is dropdown shown after toggle?", notificationsDropdown.classList.contains('show')); // DEBUG
 }
 
 function populateNotificationsDropdown() {
+    console.log("populateNotificationsDropdown called"); // DEBUG
     if (!notificationsList || !notificationsFooter) {
         console.error("Notification list or footer element not found");
         return;
@@ -501,6 +508,7 @@ function populateNotificationsDropdown() {
         const status = getReportStatusWithReference(report.dueDate, today);
         return !status.isPastDue && (status.class === 'status-due-today' || status.class === 'status-due-soon');
     }).sort((a,b) => new Date(a.dueDate) - new Date(b.dueDate)); 
+    console.log("Alert reports found:", alertReports.length); // DEBUG
 
     if (alertReports.length === 0) {
         notificationsList.innerHTML = '<li class="no-notifications">لا توجد تنبيهات حالية.</li>';
@@ -515,6 +523,7 @@ function populateNotificationsDropdown() {
                 <span class="notification-status-tag ${statusInfo.class}">${statusInfo.text}</span>
             `;
             listItem.addEventListener('click', () => {
+                console.log("Notification item clicked:", report.title); // DEBUG
                 activeKpiFilterType = null; 
                 activeMonthFilter = null;
                 searchInput.value = report.title; 
@@ -534,6 +543,7 @@ function populateNotificationsDropdown() {
         });
         notificationsFooter.style.display = 'block';
     }
+    console.log("Notifications list populated."); // DEBUG
 }
 
 
@@ -675,18 +685,21 @@ document.addEventListener('DOMContentLoaded', () => {
     filterCurrentMonthButton?.addEventListener('click', () => handleMonthFilterClick('current'));
     filterNextMonthButton?.addEventListener('click', () => handleMonthFilterClick('next'));
 
-    // Corrected event listener for notifications button
     if (notificationsBtn) {
         notificationsBtn.addEventListener('click', (event) => {
+            console.log("Notifications button clicked!"); // DEBUG
             event.stopPropagation(); 
             toggleNotificationsDropdown();
         });
+    } else {
+        console.error("notificationsBtn not found on DOMContentLoaded"); // DEBUG
     }
 
     if (viewAllNotificationsLink) {
         viewAllNotificationsLink.addEventListener('click', (e) => {
             e.preventDefault();
-            activeKpiFilterType = 'due_soon'; // This KPI type includes "due today" and "due soon"
+            console.log("'View all notifications' link clicked"); // DEBUG
+            activeKpiFilterType = 'due_soon'; 
             activeKpiFilterName = 'التنبيهات الهامة'; 
             startDateInput.value = ''; 
             endDateInput.value = '';
@@ -704,15 +717,16 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
-    // Corrected logic for closing dropdown when clicking outside
     window.addEventListener('click', (event) => {
+        // Close notifications dropdown if click is outside
         if (notificationsDropdown && notificationsDropdown.classList.contains('show')) {
-            // Check if the click is outside the dropdown AND outside the notification button itself
-            if (!notificationsDropdown.contains(event.target) && !notificationsBtn.contains(event.target)) {
+            const container = notificationsBtn.closest('.notifications-container'); // Get the parent container
+            if (container && !container.contains(event.target)) { // Check if click is outside the container
                  notificationsDropdown.classList.remove('show');
+                 console.log("Clicked outside notifications dropdown, closing it."); // DEBUG
             }
         }
-        // Also handle modal closing
+        // Close modal if click is outside
         if (event.target === eventModal) {
             closeModal();
         }
@@ -720,7 +734,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     modalCloseButton?.addEventListener('click', closeModal);
-    // Removed the redundant window click listener for modal, as it's handled above.
     
     modalEmailButton?.addEventListener('click', () => {
         if (currentModalReport) {
