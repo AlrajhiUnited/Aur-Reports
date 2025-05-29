@@ -127,7 +127,7 @@ function generateICSContent(report) {
         'BEGIN:VALARM',
         'ACTION:DISPLAY',
         'DESCRIPTION:تذكير بالتقرير: ' + report.title,
-        'TRIGGER;VALUE=DATE-TIME:' + dtstart + 'T090000',
+        'TRIGGER;VALUE=DATE-TIME:' + dtstart + 'T090000', // Reminder at 9 AM on the due date
         'END:VALARM',
         'END:VEVENT',
         'END:VCALENDAR'
@@ -478,8 +478,8 @@ function updateMonthFilterButtonsUI() {
 // --- Notifications Dropdown Logic ---
 function toggleNotificationsDropdown() {
     if (!notificationsDropdown) return;
-    const isShown = notificationsDropdown.classList.contains('show');
-    if (isShown) {
+    const isCurrentlyShown = notificationsDropdown.classList.contains('show');
+    if (isCurrentlyShown) {
         notificationsDropdown.classList.remove('show');
     } else {
         populateNotificationsDropdown(); 
@@ -510,7 +510,7 @@ function populateNotificationsDropdown() {
             listItem.innerHTML = `
                 <span class="notification-title">${report.title}</span>
                 <small class="notification-details">
-                    ${report.department} | ${report.dueDate} - 
+                    ${report.department} | ${report.dueDate} | 
                     <span class="notification-status-tag ${statusInfo.class}">${statusInfo.text}</span>
                 </small>
             `;
