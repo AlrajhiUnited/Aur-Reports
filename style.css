@@ -15,11 +15,11 @@
     --accent-gold-text-on-gold-bg: #FFFFFF;
 
     --accent-blue-calendar-event: #AEC6CF;
-    --accent-orange-table-tag: #E67E22;
+    --accent-orange-table-tag: #E67E22; /* مستحق اليوم في الجدول والتنبيهات */
     --accent-red: #E74C3C;
-    --accent-green-table-tag: #5cb85c;
-    --accent-blue-table-tag: #5bc0de;
-    --past-due-color: #95A5A6;
+    --accent-green-table-tag: #5cb85c; /* قادم في الجدول والتنبيهات */
+    --accent-blue-table-tag: #5bc0de; /* قادم قريباً في الجدول والتنبيهات */
+    --past-due-color: #95A5A6; /* منتهي في الجدول والتقويم */
     --calendar-today-bg: rgba(189, 154, 95, 0.6);
 
     --font-family-base: 'Cairo', sans-serif;
@@ -349,14 +349,13 @@ body {
     z-index: 1050; 
     max-height: 400px;
     overflow-y: auto;
-    display: none; /* Initially hidden */
-    /* Forcing visibility for debugging if .show is present */
+    display: none; 
 }
 .notifications-dropdown.show {
-    display: block !important; /* Forcing display to block */
+    display: block !important; 
     opacity: 1 !important;
     visibility: visible !important;
-    transform: none !important; /* Remove transform for debugging */
+    transform: none !important; 
 }
 
 
@@ -399,12 +398,17 @@ body {
     color: var(--text-muted-light);
     margin-bottom: 5px;
 }
-#notifications-list .notification-status-tag {
-    font-size: 0.7rem;
+/* Re-applying status tag colors for notifications specifically if needed */
+.notification-status-tag.status-due-today { background-color: var(--accent-orange-table-tag); }
+.notification-status-tag.status-due-soon { background-color: var(--accent-blue-table-tag); }
+/* General style for notification status tags if not using specific classes from table */
+.notification-status-tag {
+    display: inline-block;
     padding: 2px 6px;
     border-radius: 10px;
     color: white;
-    align-self: flex-start; 
+    font-size: 0.7em;
+    margin-right: 5px; /* For RTL, space before the text */
 }
 
 
