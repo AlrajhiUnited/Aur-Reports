@@ -354,15 +354,17 @@ body {
     transform: translateY(-10px) scale(0.95);
     transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out, visibility 0s linear 0.2s;
 }
-html[dir="rtl"] .notifications-dropdown {
-    left: auto; 
-    right: 0;   
-    transform-origin: top right; 
-}
+/* Positioning for LTR */
 html:not([dir="rtl"]) .notifications-dropdown {
     left: 0;
     right: auto;
-    transform-origin: top left;
+    transform-origin: top left; 
+}
+/* Positioning for RTL */
+html[dir="rtl"] .notifications-dropdown {
+    right: 0; /* Align to the right of the container */
+    left: auto;
+    transform-origin: top right; /* Animate from top right */
 }
 
 
