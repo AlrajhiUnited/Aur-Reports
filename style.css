@@ -340,7 +340,8 @@ body {
 .notifications-dropdown {
     position: absolute;
     top: calc(100% + 8px); 
-    left: 0; 
+    left: 0; /* For RTL, this aligns to the "start" of the parent */
+    right: auto; /* Ensure it doesn't try to align right by default */
     width: 320px;
     background-color: var(--card-bg-light);
     border: 1px solid var(--border-color-light);
@@ -349,25 +350,22 @@ body {
     z-index: 1050; 
     max-height: 400px;
     overflow-y: auto;
-    display: none; /* Initially hidden */
-    opacity: 0; /* For transition */
-    visibility: hidden; /* For transition */
-    transform: translateY(-10px) scale(0.95); /* For transition */
+    display: none; 
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px) scale(0.95);
+    transform-origin: top left; /* Correct for LTR default, will be overridden for RTL */
     transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out, visibility 0s linear 0.2s;
 }
 html[dir="rtl"] .notifications-dropdown {
-    left: auto;
-    right: 0;
-    transform-origin: top right;
-}
-html:not([dir="rtl"]) .notifications-dropdown {
-    left: 0;
-    right: auto;
-    transform-origin: top left;
+    left: auto; /* Override LTR default */
+    right: 0;   /* Align to the right for RTL */
+    transform-origin: top right; /* Correct transform origin for RTL */
 }
 
+
 .notifications-dropdown.show {
-    display: block; /* Changed from !important to allow transitions */
+    display: block; 
     opacity: 1;
     visibility: visible;
     transform: translateY(0) scale(1);
@@ -415,21 +413,19 @@ html:not([dir="rtl"]) .notifications-dropdown {
     margin-bottom: 5px;
 }
 
-.notification-status-tag { /* General style for notification status tags */
+.notification-status-tag { 
     display: inline-block;
     padding: 3px 7px;
     border-radius: 12px;
     color: white;
     font-size: 0.75rem;
     font-weight: bold;
-    margin-right: 5px; /* For RTL */
+    margin-right: 5px; 
     line-height: 1.2; 
 }
-/* Specific background colors for notification status tags, inheriting from general status-tag if possible */
 .notification-status-tag.status-due-today { background-color: var(--accent-orange-table-tag); }
 .notification-status-tag.status-due-soon { background-color: var(--accent-blue-table-tag); }
 .notification-status-tag.status-upcoming { background-color: var(--accent-green-table-tag); }
-/* No need for .status-past-due here as notifications are for upcoming/due */
 
 
 .notifications-footer {
