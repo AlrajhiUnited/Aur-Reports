@@ -1,8 +1,8 @@
 // Global variables
 let allReports = [];
-let filteredReportsBase = []; 
-let reportsForChartsAndCalendar = []; 
-let reportsForDisplayInTable = []; 
+let filteredReportsBase = []; // After search and department filter, includes ALL statuses
+let reportsForChartsAndCalendar = []; // Derived from filteredReportsBase, excluding/including past_due based on activeKpiFilterType
+let reportsForDisplayInTable = []; // Derived from reportsForChartsAndCalendar or a more specific KPI subset
 
 let currentPage = 1;
 const reportsPerPage = 15;
@@ -16,7 +16,7 @@ let calendarInstance = null;
 // State for KPI filter
 let activeKpiFilterType = null;
 let activeKpiFilterName = '';
-let activeMonthFilter = null; 
+let activeMonthFilter = null; // 'current', 'next', or null
 
 // DOM Elements
 const loadingMessage = document.getElementById('loading-message');
@@ -32,12 +32,15 @@ const resetAllFiltersButton = document.getElementById('reset-all-filters-btn');
 const filterCurrentMonthButton = document.getElementById('filter-current-month');
 const filterNextMonthButton = document.getElementById('filter-next-month');
 
+// Notifications Dropdown Elements
 const notificationsBtn = document.getElementById('notifications-btn');
 const notificationsDropdown = document.getElementById('notifications-dropdown');
 const notificationsList = document.getElementById('notifications-list');
 const notificationsFooter = document.getElementById('notifications-footer');
 const viewAllNotificationsLink = document.getElementById('view-all-notifications-link');
 
+
+// KPI Card Elements & Values
 const kpiTotalReportsValue = document.getElementById('kpi-total-reports-value');
 const kpiPeriodReportsValue = document.getElementById('kpi-period-reports-value');
 const kpiDueTodayValue = document.getElementById('kpi-due-today-value');
@@ -52,6 +55,7 @@ const kpiCards = {
     past_due: document.getElementById('kpi-past-due-card')
 };
 
+// Modal Elements
 const eventModal = document.getElementById('event-modal');
 const modalCloseButton = eventModal.querySelector('.close-button');
 const modalTitle = document.getElementById('modal-title');
@@ -502,10 +506,10 @@ function populateNotificationsDropdown() {
         alertReports.forEach(report => {
             const statusInfo = getReportStatusWithReference(report.dueDate, today);
             const listItem = document.createElement('li');
+            // Simplified display for notification items
             listItem.innerHTML = `
                 <span class="notification-title">${report.title}</span>
-                <small class="notification-details">الجهة: ${report.department} | تاريخ الاستحقاق: ${report.dueDate}</small>
-                <span class="notification-status-tag ${statusInfo.class}">${statusInfo.text}</span>
+                <small class="notification-details">${report.department} | ${report.dueDate} - <span class="notification-status-tag ${statusInfo.class}" style="background-color: var(--${statusInfo.class.replace('status-','accent-')}-table-tag); display: inline-block; padding: 2px 5px; border-radius: 10px; color: white; font-size: 0.7em;">${statusInfo.text}</span></small>
             `;
             listItem.addEventListener('click', () => {
                 activeKpiFilterType = null; 
