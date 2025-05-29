@@ -252,7 +252,7 @@ body {
     box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     position: sticky;
     top: 0;
-    z-index: 900; /* Ensure top bar is above content but below dropdowns/modals */
+    z-index: 900; 
 }
 
 .top-bar h1 {
@@ -265,6 +265,7 @@ body {
     display: flex;
     align-items: center;
     gap: 15px;
+    /* overflow: visible; /* Ensure dropdown is not clipped */
 }
 
 .top-bar-controls input[type="search"] {
@@ -309,7 +310,7 @@ body {
 
 /* Notifications Dropdown Styles */
 .notifications-container {
-    position: relative; /* Crucial for absolute positioning of dropdown */
+    position: relative; 
     display: inline-block; 
 }
 
@@ -339,27 +340,24 @@ body {
 
 .notifications-dropdown {
     position: absolute;
-    top: calc(100% + 8px); /* Position below the button with a small gap */
+    top: calc(100% + 8px); 
     left: 0; 
     width: 320px;
     background-color: var(--card-bg-light);
     border: 1px solid var(--border-color-light);
     border-radius: 8px;
-    box-shadow: 0 6px 12px rgba(0,0,0,0.18); /* Enhanced shadow */
-    z-index: 1050; /* Ensure it's above other content, including top-bar */
+    box-shadow: 0 6px 12px rgba(0,0,0,0.18);
+    z-index: 1050; /* Increased z-index */
     max-height: 400px;
     overflow-y: auto;
-    opacity: 0;
-    visibility: hidden;
-    transform: translateY(-10px) scale(0.95); /* Initial state for transition */
-    transform-origin: top left; /* For RTL, origin should be top right if aligning right */
-    transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out, visibility 0s linear 0.2s; /* Delay visibility transition */
+    display: none; /* Initially hidden */
+    /* Removed opacity, visibility, transform for now */
 }
 .notifications-dropdown.show {
-    opacity: 1;
+    display: block; /* Or flex if its children need flex layout */
+    /* opacity: 1;
     visibility: visible;
-    transform: translateY(0) scale(1);
-    transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out, visibility 0s linear 0s;
+    transform: translateY(0) scale(1); */
 }
 
 
@@ -380,7 +378,7 @@ body {
 #notifications-list li {
     padding: 10px 15px;
     border-bottom: 1px solid var(--border-color-light);
-    cursor: pointer; /* Make items clickable */
+    cursor: pointer; 
     transition: background-color 0.2s ease;
 }
 #notifications-list li:last-child {
@@ -924,21 +922,21 @@ body {
     .top-bar-controls {
         width: 100%;
     }
-    .notifications-container { /* Ensure it takes space in the flex layout */
-        margin-left: auto; /* Pushes to the right in LTR, works with flex-direction row */
+    .notifications-container { 
+        margin-left: auto; 
     }
      .notifications-dropdown {
-        left: 0; /* Align to the left of its container */
+        left: 0; 
         right: auto;
     }
     @media (max-width: 768px) and (min-width: 481px) {
-        .top-bar-controls { /* For tablet, keep controls in a row but allow wrap */
+        .top-bar-controls { 
             flex-direction: row;
             flex-wrap: wrap;
             justify-content: space-between;
         }
         .notifications-container {
-             margin-left: 0; /* Reset margin if it's part of a wrapping row */
+             margin-left: 0; 
         }
     }
 
