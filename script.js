@@ -6,7 +6,6 @@ let reportsForDisplayInTable = []; // Derived from reportsForChartsAndCalendar o
 
 let currentPage = 1;
 const reportsPerPage = 15;
-// systemBaseDate is removed, getToday() will be used
 const recipientEmail = 'shamdan@aur.com.sa';
 
 // Chart instances
@@ -172,7 +171,7 @@ async function fetchData() {
         }));
 
         populateDepartmentFilter();
-        applyAllFiltersAndRender(); // This will also call updateKPIs which calculates notification dot
+        applyAllFiltersAndRender(); 
 
     } catch (error) {
         console.error('Error fetching or parsing data:', error);
@@ -328,9 +327,6 @@ function updateKPIs() {
     const pastDueReportsForAll = filteredReportsBase.filter(r => getReportStatusWithReference(r.dueDate, today).isPastDue);
     kpiPastDueValue.textContent = pastDueReportsForAll.length;
 
-    // Update notification dot based on overall filtered list (filteredReportsBase)
-    // not just reportsInScopeForKpi, because notifications should reflect all upcoming urgencies
-    // after basic search/department filters.
     const nonPastDueOverallForNotification = filteredReportsBase.filter(r => !getReportStatusWithReference(r.dueDate, today).isPastDue);
     const upcomingOrDueTodayForNotification = nonPastDueOverallForNotification.filter(r => {
         const diff = diffInDays(r.dueDate, today);
@@ -483,14 +479,13 @@ function updateMonthFilterButtonsUI() {
 
 // --- Notifications Dropdown Logic ---
 function toggleNotificationsDropdown() {
-    if (notificationsDropdown) {
-        const isShown = notificationsDropdown.classList.contains('show');
-        if (isShown) {
-            notificationsDropdown.classList.remove('show');
-        } else {
-            populateNotificationsDropdown(); // Populate before showing
-            notificationsDropdown.classList.add('show');
-        }
+    if (!notificationsDropdown) return; // Ensure element exists
+    const isShown = notificationsDropdown.classList.contains('show');
+    if (isShown) {
+        notificationsDropdown.classList.remove('show');
+    } else {
+        populateNotificationsDropdown(); // Populate before showing
+        notificationsDropdown.classList.add('show');
     }
 }
 
@@ -502,8 +497,6 @@ function populateNotificationsDropdown() {
     notificationsList.innerHTML = ''; 
     const today = getToday();
 
-    // Get reports due today or within the next 2 days (status 'due_today' or 'due_soon')
-    // Based on filteredReportsBase (search + department filters applied)
     const alertReports = filteredReportsBase.filter(report => {
         const status = getReportStatusWithReference(report.dueDate, today);
         return !status.isPastDue && (status.class === 'status-due-today' || status.class === 'status-due-soon');
@@ -522,16 +515,15 @@ function populateNotificationsDropdown() {
                 <span class="notification-status-tag ${statusInfo.class}">${statusInfo.text}</span>
             `;
             listItem.addEventListener('click', () => {
-                // Example: Filter table to show this specific report or related ones
                 activeKpiFilterType = null; 
                 activeMonthFilter = null;
-                searchInput.value = report.title; // Pre-fill search
-                departmentFilter.value = report.department; // Pre-fill department
+                searchInput.value = report.title; 
+                departmentFilter.value = report.department; 
                 startDateInput.value = report.dueDate;
                 endDateInput.value = report.dueDate;
                 
                 applyAllFiltersAndRender();
-                notificationsDropdown.classList.remove('show'); // Close dropdown
+                if (notificationsDropdown) notificationsDropdown.classList.remove('show');
                 
                 const overviewNavItem = document.querySelector('.nav-item[data-view="overview-section"]');
                 if (overviewNavItem && !overviewNavItem.classList.contains('active')) {
@@ -683,45 +675,52 @@ document.addEventListener('DOMContentLoaded', () => {
     filterCurrentMonthButton?.addEventListener('click', () => handleMonthFilterClick('current'));
     filterNextMonthButton?.addEventListener('click', () => handleMonthFilterClick('next'));
 
-    notificationsBtn?.addEventListener('click', (event) => {
-        event.stopPropagation(); 
-        toggleNotificationsDropdown();
-    });
-    viewAllNotificationsLink?.addEventListener('click', (e) => {
-        e.preventDefault();
-        activeKpiFilterType = 'due_soon'; 
-        activeKpiFilterName = 'التنبيهات الهامة'; 
-        startDateInput.value = ''; 
-        endDateInput.value = '';
-        activeMonthFilter = null;
-        applyAllFiltersAndRender();
-        
-        if (notificationsDropdown && notificationsDropdown.classList.contains('show')) {
-            notificationsDropdown.classList.remove('show');
-        }
-        
-        const overviewNavItem = document.querySelector('.nav-item[data-view="overview-section"]');
-        if (overviewNavItem && !overviewNavItem.classList.contains('active')) {
-             overviewNavItem.querySelector('a').click();
-        }
-    });
+    // Corrected event listener for notifications button
+    if (notificationsBtn) {
+        notificationsBtn.addEventListener('click', (event) => {
+            event.stopPropagation(); 
+            toggleNotificationsDropdown();
+        });
+    }
+
+    if (viewAllNotificationsLink) {
+        viewAllNotificationsLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            activeKpiFilterType = 'due_soon'; // This KPI type includes "due today" and "due soon"
+            activeKpiFilterName = 'التنبيهات الهامة'; 
+            startDateInput.value = ''; 
+            endDateInput.value = '';
+            activeMonthFilter = null;
+            applyAllFiltersAndRender();
+            
+            if (notificationsDropdown && notificationsDropdown.classList.contains('show')) {
+                notificationsDropdown.classList.remove('show');
+            }
+            
+            const overviewNavItem = document.querySelector('.nav-item[data-view="overview-section"]');
+            if (overviewNavItem && !overviewNavItem.classList.contains('active')) {
+                 overviewNavItem.querySelector('a').click();
+            }
+        });
+    }
     
+    // Corrected logic for closing dropdown when clicking outside
     window.addEventListener('click', (event) => {
         if (notificationsDropdown && notificationsDropdown.classList.contains('show')) {
-            const container = notificationsBtn.closest('.notifications-container');
-            if (container && !container.contains(event.target)) {
+            // Check if the click is outside the dropdown AND outside the notification button itself
+            if (!notificationsDropdown.contains(event.target) && !notificationsBtn.contains(event.target)) {
                  notificationsDropdown.classList.remove('show');
             }
+        }
+        // Also handle modal closing
+        if (event.target === eventModal) {
+            closeModal();
         }
     });
 
 
     modalCloseButton?.addEventListener('click', closeModal);
-    window.addEventListener('click', (event) => { 
-        if (event.target === eventModal) {
-            closeModal();
-        }
-    }); // Ensure this doesn't conflict with notification dropdown closing
+    // Removed the redundant window click listener for modal, as it's handled above.
     
     modalEmailButton?.addEventListener('click', () => {
         if (currentModalReport) {
