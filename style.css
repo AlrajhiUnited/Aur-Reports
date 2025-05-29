@@ -265,7 +265,6 @@ body {
     display: flex;
     align-items: center;
     gap: 15px;
-    /* overflow: visible; /* Ensure dropdown is not clipped */
 }
 
 .top-bar-controls input[type="search"] {
@@ -347,17 +346,17 @@ body {
     border: 1px solid var(--border-color-light);
     border-radius: 8px;
     box-shadow: 0 6px 12px rgba(0,0,0,0.18);
-    z-index: 1050; /* Increased z-index */
+    z-index: 1050; 
     max-height: 400px;
     overflow-y: auto;
     display: none; /* Initially hidden */
-    /* Removed opacity, visibility, transform for now */
+    /* Forcing visibility for debugging if .show is present */
 }
 .notifications-dropdown.show {
-    display: block; /* Or flex if its children need flex layout */
-    /* opacity: 1;
-    visibility: visible;
-    transform: translateY(0) scale(1); */
+    display: block !important; /* Forcing display to block */
+    opacity: 1 !important;
+    visibility: visible !important;
+    transform: none !important; /* Remove transform for debugging */
 }
 
 
