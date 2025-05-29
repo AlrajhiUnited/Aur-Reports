@@ -265,7 +265,6 @@ body {
     display: flex;
     align-items: center;
     gap: 15px;
-    /* overflow: visible !important; /* Attempt to force visibility of children */
 }
 
 .top-bar-controls input[type="search"] {
@@ -347,13 +346,32 @@ body {
     border: 1px solid var(--border-color-light);
     border-radius: 8px;
     box-shadow: 0 6px 12px rgba(0,0,0,0.18);
-    z-index: 2000; /* Increased z-index significantly */
+    z-index: 1050; 
     max-height: 400px;
     overflow-y: auto;
     display: none; /* Initially hidden */
+    opacity: 0; /* For transition */
+    visibility: hidden; /* For transition */
+    transform: translateY(-10px) scale(0.95); /* For transition */
+    transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out, visibility 0s linear 0.2s;
 }
+html[dir="rtl"] .notifications-dropdown {
+    left: auto;
+    right: 0;
+    transform-origin: top right;
+}
+html:not([dir="rtl"]) .notifications-dropdown {
+    left: 0;
+    right: auto;
+    transform-origin: top left;
+}
+
 .notifications-dropdown.show {
-    display: block !important; /* Force display */
+    display: block; /* Changed from !important to allow transitions */
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0) scale(1);
+    transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out, visibility 0s linear 0s;
 }
 
 
@@ -397,18 +415,21 @@ body {
     margin-bottom: 5px;
 }
 
-.notification-status-tag {
+.notification-status-tag { /* General style for notification status tags */
     display: inline-block;
     padding: 3px 7px;
     border-radius: 12px;
     color: white;
     font-size: 0.75rem;
     font-weight: bold;
-    margin-right: 5px;
+    margin-right: 5px; /* For RTL */
     line-height: 1.2; 
 }
+/* Specific background colors for notification status tags, inheriting from general status-tag if possible */
 .notification-status-tag.status-due-today { background-color: var(--accent-orange-table-tag); }
 .notification-status-tag.status-due-soon { background-color: var(--accent-blue-table-tag); }
+.notification-status-tag.status-upcoming { background-color: var(--accent-green-table-tag); }
+/* No need for .status-past-due here as notifications are for upcoming/due */
 
 
 .notifications-footer {
