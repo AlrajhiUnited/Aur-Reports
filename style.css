@@ -265,6 +265,7 @@ body {
     display: flex;
     align-items: center;
     gap: 15px;
+    /* overflow: visible !important; /* Attempt to force visibility of children */
 }
 
 .top-bar-controls input[type="search"] {
@@ -340,40 +341,19 @@ body {
 .notifications-dropdown {
     position: absolute;
     top: calc(100% + 8px); 
-    left: 0; /* Default for LTR, will be overridden for RTL if needed by browser */
-    /* right: auto; /* Explicitly set for LTR */
+    left: 0; 
     width: 320px;
     background-color: var(--card-bg-light);
     border: 1px solid var(--border-color-light);
     border-radius: 8px;
     box-shadow: 0 6px 12px rgba(0,0,0,0.18);
-    z-index: 1050; 
+    z-index: 2000; /* Increased z-index significantly */
     max-height: 400px;
     overflow-y: auto;
-    display: none; 
-    opacity: 0;
-    visibility: hidden;
-    transform: translateY(-10px) scale(0.95);
-    transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out, visibility 0s linear 0.2s;
+    display: none; /* Initially hidden */
 }
-html[dir="rtl"] .notifications-dropdown { /* Specific for RTL */
-    left: auto;
-    right: 0;
-    transform-origin: top right;
-}
-html:not([dir="rtl"]) .notifications-dropdown { /* Specific for LTR */
-    left: 0;
-    right: auto;
-    transform-origin: top left;
-}
-
-
 .notifications-dropdown.show {
-    display: block; 
-    opacity: 1;
-    visibility: visible;
-    transform: translateY(0) scale(1);
-    transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out, visibility 0s linear 0s;
+    display: block !important; /* Force display */
 }
 
 
@@ -419,18 +399,16 @@ html:not([dir="rtl"]) .notifications-dropdown { /* Specific for LTR */
 
 .notification-status-tag {
     display: inline-block;
-    padding: 3px 7px; /* Slightly more padding */
-    border-radius: 12px; /* Consistent with table status tags */
+    padding: 3px 7px;
+    border-radius: 12px;
     color: white;
-    font-size: 0.75rem; /* Consistent with table status tags */
+    font-size: 0.75rem;
     font-weight: bold;
-    margin-right: 5px; /* For RTL */
-    line-height: 1.2; /* Adjust line height for better vertical centering */
+    margin-right: 5px;
+    line-height: 1.2; 
 }
-/* Apply background colors using the general status classes */
 .notification-status-tag.status-due-today { background-color: var(--accent-orange-table-tag); }
 .notification-status-tag.status-due-soon { background-color: var(--accent-blue-table-tag); }
-/* Add other status colors if they can appear in notifications */
 
 
 .notifications-footer {
