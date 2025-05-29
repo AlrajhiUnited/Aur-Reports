@@ -62,10 +62,20 @@
                             <option value="">كل الجهات</option>
                             </select>
                     </div>
-                    <button id="notifications-btn" aria-label="التنبيهات">
-                        <i class="fas fa-bell"></i>
-                        <span id="notification-dot" class="notification-dot" style="display: none;"></span>
-                    </button>
+                    <div class="notifications-container">
+                        <button id="notifications-btn" aria-label="التنبيهات">
+                            <i class="fas fa-bell"></i>
+                            <span id="notification-dot" class="notification-dot" style="display: none;"></span>
+                        </button>
+                        <div id="notifications-dropdown" class="notifications-dropdown" style="display: none;">
+                            <div class="notifications-header">تنبيهات التقارير</div>
+                            <ul id="notifications-list">
+                                </ul>
+                            <div id="notifications-footer" class="notifications-footer" style="display:none;">
+                                <a href="#" id="view-all-notifications-link">عرض كل التنبيهات في الجدول</a>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </header>
 
