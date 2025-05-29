@@ -506,10 +506,13 @@ function populateNotificationsDropdown() {
         alertReports.forEach(report => {
             const statusInfo = getReportStatusWithReference(report.dueDate, today);
             const listItem = document.createElement('li');
-            // Simplified display for notification items
+            
             listItem.innerHTML = `
                 <span class="notification-title">${report.title}</span>
-                <small class="notification-details">${report.department} | ${report.dueDate} - <span class="notification-status-tag ${statusInfo.class}" style="background-color: var(--${statusInfo.class.replace('status-','accent-')}-table-tag); display: inline-block; padding: 2px 5px; border-radius: 10px; color: white; font-size: 0.7em;">${statusInfo.text}</span></small>
+                <small class="notification-details">
+                    ${report.department} | ${report.dueDate} - 
+                    <span class="notification-status-tag ${statusInfo.class}">${statusInfo.text}</span>
+                </small>
             `;
             listItem.addEventListener('click', () => {
                 activeKpiFilterType = null; 
@@ -703,7 +706,7 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('click', (event) => {
         if (notificationsDropdown && notificationsDropdown.classList.contains('show')) {
             const container = notificationsBtn.closest('.notifications-container');
-            if (container && !container.contains(event.target)) {
+            if (container && !container.contains(event.target)) { 
                  notificationsDropdown.classList.remove('show');
             }
         }
