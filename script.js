@@ -6,7 +6,7 @@ let reportsForDisplayInTable = []; // Derived from reportsForChartsAndCalendar o
 
 let currentPage = 1;
 const reportsPerPage = 15;
-// const systemBaseDate = new Date('2025-05-27'); // Removed: System's "today" will be dynamic
+// systemBaseDate is removed, getToday() will be used
 const recipientEmail = 'shamdan@aur.com.sa';
 
 // Chart instances
@@ -32,6 +32,13 @@ const kpiFilterIndicator = document.getElementById('kpi-filter-indicator');
 const resetAllFiltersButton = document.getElementById('reset-all-filters-btn');
 const filterCurrentMonthButton = document.getElementById('filter-current-month');
 const filterNextMonthButton = document.getElementById('filter-next-month');
+
+// Notifications Dropdown Elements
+const notificationsBtn = document.getElementById('notifications-btn');
+const notificationsDropdown = document.getElementById('notifications-dropdown');
+const notificationsList = document.getElementById('notifications-list');
+const notificationsFooter = document.getElementById('notifications-footer');
+const viewAllNotificationsLink = document.getElementById('view-all-notifications-link');
 
 
 // KPI Card Elements & Values
@@ -61,11 +68,6 @@ const modalEmailButton = document.getElementById('modal-email-button');
 let currentModalReport = null;
 
 // --- Utility Functions ---
-/**
- * Returns the current date with time set to 00:00:00 for consistent day comparisons.
- * This function now provides the actual current date.
- * @returns {Date} The current date.
- */
 function getToday() {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -83,20 +85,16 @@ function dateToYYYYMMDD(date) {
 function diffInDays(date1Str, date2) {
     const d1 = new Date(date1Str);
     const d1StartOfDay = new Date(d1.getFullYear(), d1.getMonth(), d1.getDate());
-    // Ensure date2 is also at the start of its day for fair comparison
     const d2StartOfDay = new Date(date2.getFullYear(), date2.getMonth(), date2.getDate());
     return Math.round((d1StartOfDay - d2StartOfDay) / (1000 * 60 * 60 * 24));
 }
 
 function getReportStatusWithReference(dueDateString, referenceDate) {
-    // Ensure referenceDate is at the start of its day for consistent diff calculation
     const refDateStartOfDay = new Date(referenceDate.getFullYear(), referenceDate.getMonth(), referenceDate.getDate());
     const diff = diffInDays(dueDateString, refDateStartOfDay);
 
     if (diff < 0) return { text: 'منتهي', class: 'status-past-due', isPastDue: true };
     if (diff === 0) return { text: 'مستحق اليوم', class: 'status-due-today', isPastDue: false };
-    // "مستحق خلال 3 أيام" (KPI label) means today, tomorrow, day after tomorrow.
-    // So diff can be 0, 1, or 2.
     if (diff > 0 && diff <= 2) return { text: 'قادم قريباً', class: 'status-due-soon', isPastDue: false };
     return { text: 'قادم', class: 'status-upcoming', isPastDue: false };
 }
@@ -174,7 +172,7 @@ async function fetchData() {
         }));
 
         populateDepartmentFilter();
-        applyAllFiltersAndRender();
+        applyAllFiltersAndRender(); // This will also call updateKPIs which calculates notification dot
 
     } catch (error) {
         console.error('Error fetching or parsing data:', error);
@@ -296,7 +294,7 @@ function displayPagination() {
 }
 
 function updateKPIs() {
-    const today = getToday(); // Dynamic "today"
+    const today = getToday();
     
     const startDateValue = startDateInput.value ? new Date(startDateInput.value) : null;
     const endDateValue = endDateInput.value ? new Date(endDateInput.value) : null;
@@ -330,8 +328,11 @@ function updateKPIs() {
     const pastDueReportsForAll = filteredReportsBase.filter(r => getReportStatusWithReference(r.dueDate, today).isPastDue);
     kpiPastDueValue.textContent = pastDueReportsForAll.length;
 
-    const nonPastDueOverall = filteredReportsBase.filter(r => !getReportStatusWithReference(r.dueDate, today).isPastDue);
-    const upcomingOrDueTodayForNotification = nonPastDueOverall.filter(r => {
+    // Update notification dot based on overall filtered list (filteredReportsBase)
+    // not just reportsInScopeForKpi, because notifications should reflect all upcoming urgencies
+    // after basic search/department filters.
+    const nonPastDueOverallForNotification = filteredReportsBase.filter(r => !getReportStatusWithReference(r.dueDate, today).isPastDue);
+    const upcomingOrDueTodayForNotification = nonPastDueOverallForNotification.filter(r => {
         const diff = diffInDays(r.dueDate, today);
         return diff >= 0 && diff <= 2;
     }).length;
@@ -357,7 +358,7 @@ function updateKPIs() {
 function applyAllFiltersAndRender() {
     const searchTerm = searchInput.value.toLowerCase().trim();
     const selectedDepartment = departmentFilter.value;
-    const today = getToday(); // Dynamic "today"
+    const today = getToday();
 
     filteredReportsBase = allReports.filter(report => {
         const matchesSearch = searchTerm === '' ||
@@ -478,6 +479,69 @@ function handleMonthFilterClick(monthType) {
 function updateMonthFilterButtonsUI() {
     filterCurrentMonthButton?.classList.toggle('active', activeMonthFilter === 'current');
     filterNextMonthButton?.classList.toggle('active', activeMonthFilter === 'next');
+}
+
+// --- Notifications Dropdown Logic ---
+function toggleNotificationsDropdown() {
+    if (notificationsDropdown) {
+        const isShown = notificationsDropdown.classList.contains('show');
+        if (isShown) {
+            notificationsDropdown.classList.remove('show');
+        } else {
+            populateNotificationsDropdown(); // Populate before showing
+            notificationsDropdown.classList.add('show');
+        }
+    }
+}
+
+function populateNotificationsDropdown() {
+    if (!notificationsList || !notificationsFooter) {
+        console.error("Notification list or footer element not found");
+        return;
+    }
+    notificationsList.innerHTML = ''; 
+    const today = getToday();
+
+    // Get reports due today or within the next 2 days (status 'due_today' or 'due_soon')
+    // Based on filteredReportsBase (search + department filters applied)
+    const alertReports = filteredReportsBase.filter(report => {
+        const status = getReportStatusWithReference(report.dueDate, today);
+        return !status.isPastDue && (status.class === 'status-due-today' || status.class === 'status-due-soon');
+    }).sort((a,b) => new Date(a.dueDate) - new Date(b.dueDate)); 
+
+    if (alertReports.length === 0) {
+        notificationsList.innerHTML = '<li class="no-notifications">لا توجد تنبيهات حالية.</li>';
+        notificationsFooter.style.display = 'none';
+    } else {
+        alertReports.forEach(report => {
+            const statusInfo = getReportStatusWithReference(report.dueDate, today);
+            const listItem = document.createElement('li');
+            listItem.innerHTML = `
+                <span class="notification-title">${report.title}</span>
+                <small class="notification-details">الجهة: ${report.department} | تاريخ الاستحقاق: ${report.dueDate}</small>
+                <span class="notification-status-tag ${statusInfo.class}">${statusInfo.text}</span>
+            `;
+            listItem.addEventListener('click', () => {
+                // Example: Filter table to show this specific report or related ones
+                activeKpiFilterType = null; 
+                activeMonthFilter = null;
+                searchInput.value = report.title; // Pre-fill search
+                departmentFilter.value = report.department; // Pre-fill department
+                startDateInput.value = report.dueDate;
+                endDateInput.value = report.dueDate;
+                
+                applyAllFiltersAndRender();
+                notificationsDropdown.classList.remove('show'); // Close dropdown
+                
+                const overviewNavItem = document.querySelector('.nav-item[data-view="overview-section"]');
+                if (overviewNavItem && !overviewNavItem.classList.contains('active')) {
+                     overviewNavItem.querySelector('a').click();
+                }
+            });
+            notificationsList.appendChild(listItem);
+        });
+        notificationsFooter.style.display = 'block';
+    }
 }
 
 
@@ -619,9 +683,46 @@ document.addEventListener('DOMContentLoaded', () => {
     filterCurrentMonthButton?.addEventListener('click', () => handleMonthFilterClick('current'));
     filterNextMonthButton?.addEventListener('click', () => handleMonthFilterClick('next'));
 
+    notificationsBtn?.addEventListener('click', (event) => {
+        event.stopPropagation(); 
+        toggleNotificationsDropdown();
+    });
+    viewAllNotificationsLink?.addEventListener('click', (e) => {
+        e.preventDefault();
+        activeKpiFilterType = 'due_soon'; 
+        activeKpiFilterName = 'التنبيهات الهامة'; 
+        startDateInput.value = ''; 
+        endDateInput.value = '';
+        activeMonthFilter = null;
+        applyAllFiltersAndRender();
+        
+        if (notificationsDropdown && notificationsDropdown.classList.contains('show')) {
+            notificationsDropdown.classList.remove('show');
+        }
+        
+        const overviewNavItem = document.querySelector('.nav-item[data-view="overview-section"]');
+        if (overviewNavItem && !overviewNavItem.classList.contains('active')) {
+             overviewNavItem.querySelector('a').click();
+        }
+    });
+    
+    window.addEventListener('click', (event) => {
+        if (notificationsDropdown && notificationsDropdown.classList.contains('show')) {
+            const container = notificationsBtn.closest('.notifications-container');
+            if (container && !container.contains(event.target)) {
+                 notificationsDropdown.classList.remove('show');
+            }
+        }
+    });
+
 
     modalCloseButton?.addEventListener('click', closeModal);
-    window.addEventListener('click', (event) => { if (event.target === eventModal) closeModal(); });
+    window.addEventListener('click', (event) => { 
+        if (event.target === eventModal) {
+            closeModal();
+        }
+    }); // Ensure this doesn't conflict with notification dropdown closing
+    
     modalEmailButton?.addEventListener('click', () => {
         if (currentModalReport) {
             const subject = `بخصوص تقرير: ${currentModalReport.title}`;
