@@ -355,9 +355,9 @@ body {
     transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out, visibility 0s linear 0.2s;
 }
 html[dir="rtl"] .notifications-dropdown {
-    left: 0; /* This should make it align to the left of the container in RTL */
+    left: 0; /* Correct for RTL: Aligns right edge of dropdown to right edge of parent */
     right: auto;
-    transform-origin: top left; /* Animation origin for RTL */
+    transform-origin: top right; /* Animate from top right for RTL */
 }
 html:not([dir="rtl"]) .notifications-dropdown { /* LTR default */
     left: 0;
@@ -458,6 +458,33 @@ html:not([dir="rtl"]) .notifications-dropdown { /* LTR default */
     flex-grow: 1;
     overflow-y: auto;
 }
+.overview-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px; /* Same as h2 margin-bottom */
+}
+.overview-header h2 {
+    margin-bottom: 0; /* Remove default margin from h2 */
+}
+.action-btn-main { /* Style for main action buttons like PDF export */
+    background-color: var(--accent-gold);
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 4px;
+    font-family: var(--font-family-base);
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+.action-btn-main i {
+    margin-left: 8px;
+}
+.action-btn-main:hover {
+    background-color: var(--accent-gold-muted);
+}
+
 
 .view {
     display: none;
@@ -466,9 +493,9 @@ html:not([dir="rtl"]) .notifications-dropdown { /* LTR default */
     display: block;
 }
 
-.view h2 {
+.view h2 { /* General h2 style for sections */
     font-size: 1.8rem;
-    margin-bottom: 20px;
+    /* margin-bottom: 20px; /* Handled by .overview-header or similar now */
     color: var(--primary-dark-light);
     border-bottom: 2px solid var(--accent-gold);
     padding-bottom: 10px;
@@ -845,6 +872,10 @@ html:not([dir="rtl"]) .notifications-dropdown { /* LTR default */
     .charts-container {
         grid-template-columns: 1fr;
     }
+     .notifications-dropdown { 
+        /* On medium screens, if the button is far left, default LTR 'left:0' is fine */
+        /* If button moves right, then right:0 might be better */
+    }
 }
 
 @media (max-width: 768px) {
@@ -943,9 +974,9 @@ html:not([dir="rtl"]) .notifications-dropdown { /* LTR default */
     }
      .notifications-dropdown {
         left: 0; 
-        right: auto;
+        right: auto; /* Ensure it aligns left on smaller screens */
     }
-    @media (max-width: 768px) and (min-width: 481px) {
+    @media (max-width: 768px) and (min-width: 481px) { /* Tablet specific if controls are row */
         .top-bar-controls { 
             flex-direction: row;
             flex-wrap: wrap;
@@ -1026,11 +1057,16 @@ html:not([dir="rtl"]) .notifications-dropdown { /* LTR default */
     .notifications-container {
         width: 100%; 
         display: flex; 
-        justify-content: flex-end; 
+        justify-content: flex-end; /* Aligns button to the right */
     }
+    /* For very small screens, dropdown might need to be almost full width */
     .notifications-dropdown {
         width: calc(100% - 20px); 
         left: 10px; 
-        right: 10px;
+        right: 10px; /* This will center it if width is less than viewport */
+        transform-origin: top center; /* Adjust origin if centered */
+    }
+     html[dir="rtl"] .notifications-dropdown {
+        transform-origin: top center; /* Or adjust based on final placement */
     }
 }
