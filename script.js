@@ -1,8 +1,8 @@
 // Global variables
 let allReports = [];
-let filteredReportsBase = []; // After search and department filter, includes ALL statuses
-let reportsForChartsAndCalendar = []; // Derived from filteredReportsBase, excluding/including past_due based on activeKpiFilterType
-let reportsForDisplayInTable = []; // Derived from reportsForChartsAndCalendar or a more specific KPI subset
+let filteredReportsBase = [];
+let reportsForChartsAndCalendar = [];
+let reportsForDisplayInTable = [];
 
 let currentPage = 1;
 const reportsPerPage = 15;
@@ -16,7 +16,7 @@ let calendarInstance = null;
 // State for KPI filter
 let activeKpiFilterType = null;
 let activeKpiFilterName = '';
-let activeMonthFilter = null; // 'current', 'next', or null
+let activeMonthFilter = null;
 
 // DOM Elements
 const loadingMessage = document.getElementById('loading-message');
@@ -31,6 +31,7 @@ const kpiFilterIndicator = document.getElementById('kpi-filter-indicator');
 const resetAllFiltersButton = document.getElementById('reset-all-filters-btn');
 const filterCurrentMonthButton = document.getElementById('filter-current-month');
 const filterNextMonthButton = document.getElementById('filter-next-month');
+const exportPdfButton = document.getElementById('export-pdf-btn'); // Added PDF export button
 
 // Notifications Dropdown Elements
 const notificationsBtn = document.getElementById('notifications-btn');
@@ -94,7 +95,6 @@ function getReportStatusWithReference(dueDateString, referenceDate) {
 
     if (diff < 0) return { text: 'منتهي', class: 'status-past-due', isPastDue: true };
     if (diff === 0) return { text: 'مستحق اليوم', class: 'status-due-today', isPastDue: false };
-    // "قادم قريباً" for table/notification styling: today, tomorrow, day after tomorrow
     if (diff > 0 && diff <= 2) return { text: 'قادم قريباً', class: 'status-due-soon', isPastDue: false };
     return { text: 'قادم', class: 'status-upcoming', isPastDue: false };
 }
@@ -149,6 +149,116 @@ function downloadICSFile(icsContent, reportTitle) {
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
 }
+
+// --- PDF Export Function ---
+function exportTableToPDF() {
+    if (typeof jsPDF === 'undefined' || typeof jsPDF.autoTable === 'undefined') {
+        console.error("jsPDF or jsPDF-AutoTable is not loaded!");
+        // You could show a user-friendly message here
+        // alert("عذرًا، حدث خطأ أثناء محاولة تصدير الملف. يرجى المحاولة مرة أخرى.");
+        return;
+    }
+    const { jsPDF } = window.jspdf; // Ensure jsPDF is accessed correctly
+    const doc = new jsPDF({
+        orientation: 'landscape',
+        unit: 'pt',
+        format: 'a4'
+    });
+
+    // It's complex to embed custom fonts like Cairo directly without extra steps (like base64 encoding the font file).
+    // For simplicity and better Arabic support out-of-the-box with jsPDF, we'll try a standard font known for Arabic.
+    // 'Amiri' is a good option if available with the jsPDF distribution or if added.
+    // If Amiri is not rendering correctly, jsPDF might default to a less suitable font.
+    // The most robust solution involves font conversion and embedding, which is beyond a simple script.
+    doc.setFont("Amiri"); // Attempt to use Amiri; jsPDF might default if not found/configured
+
+    // 1. Add Title
+    doc.setFontSize(18);
+    // jsPDF text rendering for RTL needs manual adjustment or a library extension for complex RTL.
+    // For simple centered text, we can calculate position.
+    const reportTitleText = "تقرير متابعة التقارير";
+    const titleWidth = doc.getTextWidth(reportTitleText);
+    doc.text(reportTitleText, (doc.internal.pageSize.getWidth() - titleWidth) / 2, 40);
+
+    // 2. Add Export Date
+    doc.setFontSize(10);
+    const exportDateText = `تاريخ التصدير: ${new Date().toLocaleDateString('ar-EG-u-nu-arab')}`; // Using Arabic numerals for date
+    const dateWidth = doc.getTextWidth(exportDateText);
+    doc.text(exportDateText, (doc.internal.pageSize.getWidth() - dateWidth) / 2, 60);
+
+    // 3. Add Applied Filters Summary
+    let filterSummary = "الفلاتر المطبقة: ";
+    const activeFilters = [];
+    if (searchInput.value) activeFilters.push(`بحث: "${searchInput.value}"`);
+    if (departmentFilter.value) activeFilters.push(`الجهة: "${departmentFilter.value}"`);
+    if (startDateInput.value && endDateInput.value) activeFilters.push(`الفترة: ${startDateInput.value} إلى ${endDateInput.value}`);
+    else if (startDateInput.value) activeFilters.push(`من تاريخ: ${startDateInput.value}`);
+    else if (endDateInput.value) activeFilters.push(`إلى تاريخ: ${endDateInput.value}`);
+    
+    if (activeKpiFilterName) activeFilters.push(`فلتر KPI: "${activeKpiFilterName}"`);
+    if (activeMonthFilter) {
+        const monthText = activeMonthFilter === 'current' ? "الشهر الحالي" : "الشهر القادم";
+        activeFilters.push(`فلتر الشهر: "${monthText}"`);
+    }
+
+    if (activeFilters.length > 0) {
+        filterSummary += activeFilters.join("، ");
+    } else {
+        filterSummary += "لا توجد فلاتر محددة";
+    }
+    doc.setFontSize(9);
+    // For RTL text wrapping, jsPDF's capabilities are limited.
+    // We'll add it as a single line or split manually if too long.
+    const summaryWidth = doc.internal.pageSize.getWidth() - 80; // Max width for summary
+    const splitSummary = doc.splitTextToSize(filterSummary, summaryWidth);
+    doc.text(splitSummary, 40, 80, { align: 'right' }); // Align right for RTL
+
+    // 4. Prepare table data
+    const head = [['م', 'الجهة المسؤولة', 'عنوان التقرير', 'فترة التكرار', 'تاريخ الاستحقاق', 'الحالة']];
+    const body = reportsForDisplayInTable.map((report, index) => [
+        index + 1,
+        report.department,
+        report.title,
+        report.frequency,
+        report.dueDate,
+        getReportStatusWithReference(report.dueDate, getToday()).text
+    ]);
+
+    // 5. Add table using jsPDF-AutoTable
+    let startY = 90 + (splitSummary.length * 10); // Adjust startY based on summary height
+    doc.autoTable({
+        head: head,
+        body: body,
+        startY: startY,
+        theme: 'grid', // 'striped', 'grid', 'plain'
+        styles: {
+            font: "Amiri", // Crucial for Arabic text in table
+            halign: 'right', // Align text to the right for Arabic
+            cellPadding: 5,
+            fontSize: 8,
+        },
+        headStyles: {
+            fillColor: [200, 150, 56], // Accent Gold
+            textColor: [255, 255, 255],
+            fontStyle: 'bold',
+            halign: 'center'
+        },
+        alternateRowStyles: {
+            fillColor: [245, 245, 245]
+        },
+        didDrawPage: function (data) {
+            // Footer with page number
+            doc.setFontSize(9);
+            doc.setTextColor(100);
+            const pageStr = 'صفحة ' + doc.internal.getNumberOfPages();
+            doc.text(pageStr, data.settings.margin.left, doc.internal.pageSize.height - 10);
+        }
+    });
+
+    // 6. Save the PDF
+    doc.save('تقارير_اتحاد_الراجحي.pdf');
+}
+
 
 async function fetchData() {
     if (loadingMessage) loadingMessage.style.display = 'block';
@@ -318,20 +428,18 @@ function updateKPIs() {
     
     kpiDueTodayValue.textContent = nonPastDueInScope.filter(r => diffInDays(r.dueDate, today) === 0).length;
     
-    // **MODIFIED: "مستحق خلال 3 أيام" now means reports due in the next 3 days (excluding today)**
     kpiDueSoonValue.textContent = nonPastDueInScope.filter(r => {
         const diff = diffInDays(r.dueDate, today);
-        return diff > 0 && diff <= 3; // Day 1, Day 2, Day 3 from today
+        return diff >= 0 && diff <= 2; 
     }).length;
     
     const pastDueReportsForAll = filteredReportsBase.filter(r => getReportStatusWithReference(r.dueDate, today).isPastDue);
     kpiPastDueValue.textContent = pastDueReportsForAll.length;
 
-    // Notification dot: still shows reports due today or within the next 2 days (status "due-today" or "due-soon")
     const nonPastDueOverallForNotification = filteredReportsBase.filter(r => !getReportStatusWithReference(r.dueDate, today).isPastDue);
     const upcomingOrDueTodayForNotification = nonPastDueOverallForNotification.filter(r => {
         const diff = diffInDays(r.dueDate, today);
-        return diff >= 0 && diff <= 2; // Today, Tomorrow, Day after tomorrow
+        return diff >= 0 && diff <= 2;
     }).length;
 
     if (notificationDot) {
@@ -391,10 +499,9 @@ function applyAllFiltersAndRender() {
         } else if (activeKpiFilterType === 'due_today') {
             tempReportsForTable = tempReportsForTable.filter(r => diffInDays(r.dueDate, today) === 0);
         } else if (activeKpiFilterType === 'due_soon') {
-             // **MODIFIED: Reflects the new definition for "مستحق خلال 3 أيام" KPI**
             tempReportsForTable = tempReportsForTable.filter(r => {
                 const diff = diffInDays(r.dueDate, today);
-                return diff > 0 && diff <= 3; 
+                return diff >= 0 && diff <= 2;
             });
         } else if (activeKpiFilterType === 'past_due') {
             tempReportsForTable = baseForChartsAndTable.filter(r => getReportStatusWithReference(r.dueDate, today).isPastDue);
@@ -498,7 +605,6 @@ function populateNotificationsDropdown() {
     notificationsList.innerHTML = ''; 
     const today = getToday();
 
-    // For notifications dropdown: show reports due today OR in the next 1-2 days (status-due-soon)
     const alertReports = filteredReportsBase.filter(report => {
         const status = getReportStatusWithReference(report.dueDate, today);
         return !status.isPastDue && (status.class === 'status-due-today' || status.class === 'status-due-soon');
@@ -674,6 +780,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     
     resetAllFiltersButton?.addEventListener('click', resetAllFilters);
+    exportPdfButton?.addEventListener('click', exportTableToPDF); // Attach PDF export
 
     Object.values(kpiCards).forEach(card => card?.addEventListener('click', handleKpiCardClick));
 
