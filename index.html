@@ -10,6 +10,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css" xintegrity="sha512-KfkfwYDsLkIlwQp6LFnl8zNdLGxu9YAA1QvwINks4PhcElQSvqcyVLLD9aMhXd13uQjoXtEKNosOWaZqXgel0g==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link href='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css' rel='stylesheet' />
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -81,7 +83,10 @@
 
             <div class="content-wrapper">
                 <section id="overview-section" class="view active">
-                    <h2>نظرة عامة <span id="kpi-filter-indicator" style="font-size: 0.7em; color: var(--accent-gold); display: none;"></span></h2>
+                    <div class="overview-header">
+                        <h2>نظرة عامة <span id="kpi-filter-indicator" style="font-size: 0.7em; color: var(--accent-gold); display: none;"></span></h2>
+                        <button id="export-pdf-btn" class="action-btn-main"><i class="fas fa-file-pdf"></i> تصدير إلى PDF</button>
+                    </div>
                     <div class="kpi-cards-container">
                         <div class="kpi-card" id="kpi-total-reports-card" data-kpi-type="total_reports">
                             <div class="kpi-icon"><i class="fas fa-file-alt"></i></div>
