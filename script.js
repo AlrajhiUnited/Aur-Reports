@@ -94,6 +94,7 @@ function getReportStatusWithReference(dueDateString, referenceDate) {
 
     if (diff < 0) return { text: 'منتهي', class: 'status-past-due', isPastDue: true };
     if (diff === 0) return { text: 'مستحق اليوم', class: 'status-due-today', isPastDue: false };
+    // "قادم قريباً" for table/notification styling: today, tomorrow, day after tomorrow
     if (diff > 0 && diff <= 2) return { text: 'قادم قريباً', class: 'status-due-soon', isPastDue: false };
     return { text: 'قادم', class: 'status-upcoming', isPastDue: false };
 }
@@ -127,7 +128,7 @@ function generateICSContent(report) {
         'BEGIN:VALARM',
         'ACTION:DISPLAY',
         'DESCRIPTION:تذكير بالتقرير: ' + report.title,
-        'TRIGGER;VALUE=DATE-TIME:' + dtstart + 'T090000', // Reminder at 9 AM on the due date
+        'TRIGGER;VALUE=DATE-TIME:' + dtstart + 'T090000',
         'END:VALARM',
         'END:VEVENT',
         'END:VCALENDAR'
@@ -317,18 +318,20 @@ function updateKPIs() {
     
     kpiDueTodayValue.textContent = nonPastDueInScope.filter(r => diffInDays(r.dueDate, today) === 0).length;
     
+    // **MODIFIED: "مستحق خلال 3 أيام" now means reports due in the next 3 days (excluding today)**
     kpiDueSoonValue.textContent = nonPastDueInScope.filter(r => {
         const diff = diffInDays(r.dueDate, today);
-        return diff >= 0 && diff <= 2; 
+        return diff > 0 && diff <= 3; // Day 1, Day 2, Day 3 from today
     }).length;
     
     const pastDueReportsForAll = filteredReportsBase.filter(r => getReportStatusWithReference(r.dueDate, today).isPastDue);
     kpiPastDueValue.textContent = pastDueReportsForAll.length;
 
+    // Notification dot: still shows reports due today or within the next 2 days (status "due-today" or "due-soon")
     const nonPastDueOverallForNotification = filteredReportsBase.filter(r => !getReportStatusWithReference(r.dueDate, today).isPastDue);
     const upcomingOrDueTodayForNotification = nonPastDueOverallForNotification.filter(r => {
         const diff = diffInDays(r.dueDate, today);
-        return diff >= 0 && diff <= 2;
+        return diff >= 0 && diff <= 2; // Today, Tomorrow, Day after tomorrow
     }).length;
 
     if (notificationDot) {
@@ -388,9 +391,10 @@ function applyAllFiltersAndRender() {
         } else if (activeKpiFilterType === 'due_today') {
             tempReportsForTable = tempReportsForTable.filter(r => diffInDays(r.dueDate, today) === 0);
         } else if (activeKpiFilterType === 'due_soon') {
+             // **MODIFIED: Reflects the new definition for "مستحق خلال 3 أيام" KPI**
             tempReportsForTable = tempReportsForTable.filter(r => {
                 const diff = diffInDays(r.dueDate, today);
-                return diff >= 0 && diff <= 2;
+                return diff > 0 && diff <= 3; 
             });
         } else if (activeKpiFilterType === 'past_due') {
             tempReportsForTable = baseForChartsAndTable.filter(r => getReportStatusWithReference(r.dueDate, today).isPastDue);
@@ -494,6 +498,7 @@ function populateNotificationsDropdown() {
     notificationsList.innerHTML = ''; 
     const today = getToday();
 
+    // For notifications dropdown: show reports due today OR in the next 1-2 days (status-due-soon)
     const alertReports = filteredReportsBase.filter(report => {
         const status = getReportStatusWithReference(report.dueDate, today);
         return !status.isPastDue && (status.class === 'status-due-today' || status.class === 'status-due-soon');
