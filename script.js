@@ -155,96 +155,8 @@ function downloadICSFile(icsContent, reportTitle) {
     URL.revokeObjectURL(url);
 }
 
-function exportTableToPDF() {
-    if (typeof window.jspdf === 'undefined' || typeof window.jspdf.jsPDF.autoTable === 'undefined') {
-        console.error("jsPDF or jsPDF-AutoTable is not loaded!");
-        return;
-    }
-    const { jsPDF } = window.jspdf; 
-    const doc = new jsPDF({
-        orientation: 'landscape',
-        unit: 'pt',
-        format: 'a4'
-    });
-
-    try {
-        doc.setFont('Amiri'); 
-    } catch (e) {
-        console.warn("Amiri font not available in jsPDF, using default font.");
-    }
-
-    const reportTitleText = "تقرير متابعة التقارير";
-    doc.setFontSize(18);
-    const titleWidth = doc.getTextWidth(reportTitleText);
-    doc.text(reportTitleText, (doc.internal.pageSize.getWidth() - titleWidth) / 2, 40);
-
-    doc.setFontSize(10);
-    const exportDateText = `تاريخ التصدير: ${new Date().toLocaleDateString('ar-EG-u-nu-arab')}`;
-    const dateWidth = doc.getTextWidth(exportDateText);
-    doc.text(exportDateText, (doc.internal.pageSize.getWidth() - dateWidth) / 2, 60);
-
-    let filterSummary = "الفلاتر المطبقة: ";
-    const activeFilters = [];
-    if (searchInput.value) activeFilters.push(`بحث: "${searchInput.value}"`);
-    if (departmentFilter.value) activeFilters.push(`الجهة: "${departmentFilter.value}"`);
-    if (startDateInput.value && endDateInput.value) activeFilters.push(`الفترة: ${startDateInput.value} إلى ${endDateInput.value}`);
-    else if (startDateInput.value) activeFilters.push(`من تاريخ: ${startDateInput.value}`);
-    else if (endDateInput.value) activeFilters.push(`إلى تاريخ: ${endDateInput.value}`);
-    
-    if (activeKpiFilterName) activeFilters.push(`فلتر KPI: "${activeKpiFilterName}"`);
-
-    if (activeFilters.length > 0) {
-        filterSummary += activeFilters.join(" | ");
-    } else {
-        filterSummary += "لا توجد فلاتر محددة";
-    }
-    doc.setFontSize(9);
-    const summaryWidth = doc.internal.pageSize.getWidth() - 80; 
-    const splitSummary = doc.splitTextToSize(filterSummary, summaryWidth);
-    doc.text(splitSummary, doc.internal.pageSize.getWidth() - 40, 80, { align: 'right' });
-
-    const head = [['م', 'الجهة المسؤولة', 'عنوان التقرير', 'فترة التكرار', 'تاريخ الاستحقاق', 'الحالة']];
-    const body = reportsForDisplayInTable.map((report, index) => [
-        index + 1,
-        report.department,
-        report.title,
-        report.frequency,
-        report.dueDate,
-        getReportStatusWithReference(report.dueDate, getToday()).text
-    ]);
-
-    let startY = 90 + (splitSummary.length * 12);
-    doc.autoTable({
-        head: head,
-        body: body,
-        startY: startY,
-        theme: 'grid', 
-        styles: {
-            font: "Amiri", 
-            halign: 'right', 
-            cellPadding: 5,
-            fontSize: 8,
-        },
-        headStyles: {
-            fillColor: [200, 150, 56], 
-            textColor: [255, 255, 255],
-            fontStyle: 'bold',
-            halign: 'center'
-        },
-        alternateRowStyles: {
-            fillColor: [245, 245, 245]
-        },
-        didDrawPage: function (data) {
-            doc.setFontSize(9);
-            doc.setTextColor(100);
-            const pageStr = 'صفحة ' + doc.internal.getNumberOfPages();
-            doc.text(pageStr, data.settings.margin.left, doc.internal.pageSize.height - 10);
-        }
-    });
-
-    doc.save('تقارير_اتحاد_الراجحي.pdf');
-}
-
+// --- PDF Export Function --- Removed as requested
+// function exportTableToPDF() { ... }
 
 async function fetchData() {
     if (loadingMessage) loadingMessage.style.display = 'block';
@@ -483,13 +395,24 @@ function applyAllFiltersAndRender() {
         });
     }
     
-    // If a KPI filter is active, apply it to the already date-filtered (if any) and status-filtered set
+    // If a KPI filter is active, apply it to the already filtered set
     if (activeKpiFilterType) {
-        if (activeKpiFilterType === 'total_reports') {
+        // Special case for past due to start from base filter
+        if (activeKpiFilterType === 'past_due') {
+            tempReportsForTable = filteredReportsBase.filter(r => getReportStatusWithReference(r.dueDate, today).isPastDue);
+            // Re-apply date filter if it exists
+             if (startDateValue && endDateValue) {
+                tempReportsForTable = tempReportsForTable.filter(report => {
+                    const dueDate = new Date(report.dueDate);
+                    return dueDate >= startDateValue && dueDate <= endDateValue;
+                });
+            }
+            tempReportsForTable.sort((a, b) => new Date(b.dueDate) - new Date(a.dueDate));
+        } else if (activeKpiFilterType === 'total_reports') {
             // "إجمالي التقارير القادمة" should show ALL upcoming reports, ignoring date range
             tempReportsForTable = filteredReportsBase.filter(r => !getReportStatusWithReference(r.dueDate, today).isPastDue);
         } else if (activeKpiFilterType === 'period_reports') {
-            // This KPI relies on date inputs, which are already applied above.
+            // Already handled by initial date filter application
         } else if (activeKpiFilterType === 'due_today') {
             tempReportsForTable = filteredReportsBase.filter(r => diffInDays(r.dueDate, today) === 0);
         } else if (activeKpiFilterType === 'due_soon') {
@@ -497,10 +420,6 @@ function applyAllFiltersAndRender() {
                 const diff = diffInDays(r.dueDate, today);
                 return diff > 0 && diff <= 3; 
             });
-        } else if (activeKpiFilterType === 'past_due') {
-            tempReportsForTable = filteredReportsBase.filter(r => getReportStatusWithReference(r.dueDate, today).isPastDue);
-            // Sort past due reports: newest first
-            tempReportsForTable.sort((a, b) => new Date(b.dueDate) - new Date(a.dueDate));
         }
     }
     
@@ -525,6 +444,8 @@ function resetAllFilters() {
     activeMonthFilter = null;
     activeKpiFilterType = null;
     activeKpiFilterName = '';
+    // Also reset analytics filter to default
+    if (analyticsDepartmentFilter) analyticsDepartmentFilter.value = 'all';
     applyAllFiltersAndRender();
 }
 
@@ -539,6 +460,9 @@ function handleKpiCardClick(event) {
     } else {
         activeKpiFilterType = kpiType;
         activeKpiFilterName = kpiName;
+        // Clear date-based filters when a KPI is clicked
+        startDateInput.value = ''; 
+        endDateInput.value = '';
         activeMonthFilter = null; 
     }
     applyAllFiltersAndRender();
@@ -849,7 +773,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     
     resetAllFiltersButton?.addEventListener('click', resetAllFilters);
-    exportPdfButton?.addEventListener('click', exportTableToPDF);
+    // exportPdfButton?.addEventListener('click', exportTableToPDF); // Removed
 
     Object.values(kpiCards).forEach(card => card?.addEventListener('click', handleKpiCardClick));
 
