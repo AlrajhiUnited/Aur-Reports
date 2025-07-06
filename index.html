@@ -9,6 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css" xintegrity="sha512-KfkfwYDsLkIlwQp6LFnl8zNdLGxu9YAA1QvwINks4PhcElQSvqcyVLLD9aMhXd13uQjoXtEKNosOWaZqXgel0g==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link href='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css' rel='stylesheet' />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -80,15 +81,13 @@
 
             <div class="content-wrapper">
                 <section id="overview-section" class="view active">
-                    <div class="overview-header">
-                        <h2>نظرة عامة <span id="kpi-filter-indicator" style="font-size: 0.7em; color: var(--accent-gold); display: none;"></span></h2>
-                        </div>
+                    <h2>نظرة عامة <span id="kpi-filter-indicator" style="font-size: 0.7em; color: var(--accent-gold); display: none;"></span></h2>
                     <div class="kpi-cards-container">
                         <div class="kpi-card" id="kpi-total-reports-card" data-kpi-type="total_reports">
                             <div class="kpi-icon"><i class="fas fa-file-alt"></i></div>
                             <div class="kpi-info">
                                 <span class="kpi-value" id="kpi-total-reports-value">-</span>
-                                <span class="kpi-label">إجمالي التقارير القادمة</span>
+                                <span class="kpi-label">إجمالي التقارير المستحقة</span>
                             </div>
                         </div>
                         <div class="kpi-card" id="kpi-period-reports-card" data-kpi-type="period_reports">
@@ -143,22 +142,15 @@
                 </section>
 
                 <section id="analytics-section" class="view">
-                    <div class="analytics-header">
-                        <h2>التحليلات الرسومية</h2>
-                        <div class="analytics-filter-container">
-                            <label for="analytics-department-filter">عرض تحليل لـ:</label>
-                            <select id="analytics-department-filter">
-                                <option value="all">جميع الإدارات (ملخص عددي)</option>
-                                </select>
+                    <h2>التحليلات الرسومية</h2>
+                    <div class="charts-container">
+                        <div class="chart-card">
+                            <h3>التقارير حسب الجهة</h3>
+                            <canvas id="department-chart"></canvas>
                         </div>
-                    </div>
-                    <div id="analytics-content-wrapper">
-                        <div id="analytics-summary-view">
-                            </div>
-                        <div id="analytics-chart-view" style="display: none;">
-                            <div class="chart-card">
-                                <canvas id="monthly-department-chart"></canvas>
-                            </div>
+                        <div class="chart-card">
+                            <h3>التقارير حسب التكرار</h3>
+                            <canvas id="frequency-chart"></canvas>
                         </div>
                     </div>
                 </section>
@@ -183,7 +175,6 @@
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js'></script>
     <script src='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/locales/ar.js'></script>
     <script src="script.js"></script>
