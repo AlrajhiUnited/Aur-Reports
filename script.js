@@ -10,8 +10,7 @@ const recipientEmail = 'shamdan@aur.com.sa';
 
 // Chart instances
 let departmentChartInstance = null;
-let frequencyChartInstance = null;
-let calendarInstance = null;
+let monthlyDepartmentChartInstance = null; // New chart instance for monthly view
 
 // State for KPI filter
 let activeKpiFilterType = null;
@@ -31,6 +30,7 @@ const kpiFilterIndicator = document.getElementById('kpi-filter-indicator');
 const resetAllFiltersButton = document.getElementById('reset-all-filters-btn');
 const filterCurrentMonthButton = document.getElementById('filter-current-month');
 const filterNextMonthButton = document.getElementById('filter-next-month');
+const exportPdfButton = document.getElementById('export-pdf-btn');
 
 // Notifications Dropdown Elements
 const notificationsBtn = document.getElementById('notifications-btn');
@@ -38,6 +38,12 @@ const notificationsDropdown = document.getElementById('notifications-dropdown');
 const notificationsList = document.getElementById('notifications-list');
 const notificationsFooter = document.getElementById('notifications-footer');
 const viewAllNotificationsLink = document.getElementById('view-all-notifications-link');
+
+// Analytics Section Elements
+const analyticsDepartmentFilter = document.getElementById('analytics-department-filter');
+const analyticsSummaryView = document.getElementById('analytics-summary-view');
+const analyticsChartView = document.getElementById('analytics-chart-view');
+const monthlyDepartmentChartCanvas = document.getElementById('monthly-department-chart');
 
 
 // KPI Card Elements & Values
@@ -127,7 +133,7 @@ function generateICSContent(report) {
         'BEGIN:VALARM',
         'ACTION:DISPLAY',
         'DESCRIPTION:تذكير بالتقرير: ' + report.title,
-        'TRIGGER;VALUE=DATE-TIME:' + dtstart + 'T090000',
+        'TRIGGER;VALUE=DATE-TIME:' + dtstart + 'T090000', // Reminder at 9 AM on the due date
         'END:VALARM',
         'END:VEVENT',
         'END:VCALENDAR'
@@ -149,6 +155,97 @@ function downloadICSFile(icsContent, reportTitle) {
     URL.revokeObjectURL(url);
 }
 
+function exportTableToPDF() {
+    if (typeof window.jspdf === 'undefined' || typeof window.jspdf.jsPDF.autoTable === 'undefined') {
+        console.error("jsPDF or jsPDF-AutoTable is not loaded!");
+        return;
+    }
+    const { jsPDF } = window.jspdf; 
+    const doc = new jsPDF({
+        orientation: 'landscape',
+        unit: 'pt',
+        format: 'a4'
+    });
+
+    try {
+        doc.setFont('Amiri'); 
+    } catch (e) {
+        console.warn("Amiri font not available in jsPDF, using default font.");
+    }
+
+    const reportTitleText = "تقرير متابعة التقارير";
+    doc.setFontSize(18);
+    const titleWidth = doc.getTextWidth(reportTitleText);
+    doc.text(reportTitleText, (doc.internal.pageSize.getWidth() - titleWidth) / 2, 40);
+
+    doc.setFontSize(10);
+    const exportDateText = `تاريخ التصدير: ${new Date().toLocaleDateString('ar-EG-u-nu-arab')}`;
+    const dateWidth = doc.getTextWidth(exportDateText);
+    doc.text(exportDateText, (doc.internal.pageSize.getWidth() - dateWidth) / 2, 60);
+
+    let filterSummary = "الفلاتر المطبقة: ";
+    const activeFilters = [];
+    if (searchInput.value) activeFilters.push(`بحث: "${searchInput.value}"`);
+    if (departmentFilter.value) activeFilters.push(`الجهة: "${departmentFilter.value}"`);
+    if (startDateInput.value && endDateInput.value) activeFilters.push(`الفترة: ${startDateInput.value} إلى ${endDateInput.value}`);
+    else if (startDateInput.value) activeFilters.push(`من تاريخ: ${startDateInput.value}`);
+    else if (endDateInput.value) activeFilters.push(`إلى تاريخ: ${endDateInput.value}`);
+    
+    if (activeKpiFilterName) activeFilters.push(`فلتر KPI: "${activeKpiFilterName}"`);
+
+    if (activeFilters.length > 0) {
+        filterSummary += activeFilters.join(" | ");
+    } else {
+        filterSummary += "لا توجد فلاتر محددة";
+    }
+    doc.setFontSize(9);
+    const summaryWidth = doc.internal.pageSize.getWidth() - 80; 
+    const splitSummary = doc.splitTextToSize(filterSummary, summaryWidth);
+    doc.text(splitSummary, doc.internal.pageSize.getWidth() - 40, 80, { align: 'right' });
+
+    const head = [['م', 'الجهة المسؤولة', 'عنوان التقرير', 'فترة التكرار', 'تاريخ الاستحقاق', 'الحالة']];
+    const body = reportsForDisplayInTable.map((report, index) => [
+        index + 1,
+        report.department,
+        report.title,
+        report.frequency,
+        report.dueDate,
+        getReportStatusWithReference(report.dueDate, getToday()).text
+    ]);
+
+    let startY = 90 + (splitSummary.length * 12);
+    doc.autoTable({
+        head: head,
+        body: body,
+        startY: startY,
+        theme: 'grid', 
+        styles: {
+            font: "Amiri", 
+            halign: 'right', 
+            cellPadding: 5,
+            fontSize: 8,
+        },
+        headStyles: {
+            fillColor: [200, 150, 56], 
+            textColor: [255, 255, 255],
+            fontStyle: 'bold',
+            halign: 'center'
+        },
+        alternateRowStyles: {
+            fillColor: [245, 245, 245]
+        },
+        didDrawPage: function (data) {
+            doc.setFontSize(9);
+            doc.setTextColor(100);
+            const pageStr = 'صفحة ' + doc.internal.getNumberOfPages();
+            doc.text(pageStr, data.settings.margin.left, doc.internal.pageSize.height - 10);
+        }
+    });
+
+    doc.save('تقارير_اتحاد_الراجحي.pdf');
+}
+
+
 async function fetchData() {
     if (loadingMessage) loadingMessage.style.display = 'block';
     if (reportsTableBody) reportsTableBody.innerHTML = '';
@@ -169,6 +266,7 @@ async function fetchData() {
         }));
 
         populateDepartmentFilter();
+        populateAnalyticsFilter();
         applyAllFiltersAndRender(); 
 
     } catch (error) {
@@ -293,15 +391,19 @@ function displayPagination() {
 function updateKPIs() {
     const today = getToday();
     
-    const startDateValue = startDateInput.value ? new Date(startDateInput.value) : null;
-    const endDateValue = endDateInput.value ? new Date(endDateInput.value) : null;
-    if (endDateValue) endDateValue.setHours(23, 59, 59, 999);
-
     // KPI: "إجمالي التقارير القادمة" - Based on search/dept filters only, ignores date range
     const nonPastDueOverall = filteredReportsBase.filter(r => !getReportStatusWithReference(r.dueDate, today).isPastDue);
     kpiTotalReportsValue.textContent = nonPastDueOverall.length;
     
-    // KPI: "إجمالي تقارير الفترة" - Based on search/dept AND date range filters
+    // KPI: "تقارير منتهية" is always based on search/dept only
+    const pastDueReportsForAll = filteredReportsBase.filter(r => getReportStatusWithReference(r.dueDate, today).isPastDue);
+    kpiPastDueValue.textContent = pastDueReportsForAll.length;
+
+    // KPI: "إجمالي تقارير الفترة" is the only KPI that respects the date range filter
+    const startDateValue = startDateInput.value ? new Date(startDateInput.value) : null;
+    const endDateValue = endDateInput.value ? new Date(endDateInput.value) : null;
+    if (endDateValue) endDateValue.setHours(23, 59, 59, 999);
+
     if (startDateValue && endDateValue) {
         const reportsInPeriod = filteredReportsBase.filter(report => {
             const dueDate = new Date(report.dueDate);
@@ -310,32 +412,27 @@ function updateKPIs() {
         const nonPastDueInPeriod = reportsInPeriod.filter(r => !getReportStatusWithReference(r.dueDate, today).isPastDue);
         kpiPeriodReportsValue.textContent = nonPastDueInPeriod.length;
     } else {
-        kpiPeriodReportsValue.textContent = '-'; // No period defined
+        kpiPeriodReportsValue.textContent = '-';
     }
     
-    // KPIs: "مستحق اليوم" and "مستحق خلال 3 أيام" should also be based on search/dept only, ignoring date range
+    // KPIs: "مستحق اليوم" and "مستحق خلال 3 أيام" are based on search/dept only
     kpiDueTodayValue.textContent = nonPastDueOverall.filter(r => diffInDays(r.dueDate, today) === 0).length;
     
     kpiDueSoonValue.textContent = nonPastDueOverall.filter(r => {
         const diff = diffInDays(r.dueDate, today);
-        return diff > 0 && diff <= 3; // Day 1, Day 2, Day 3 from today
+        return diff > 0 && diff <= 3; 
     }).length;
     
-    // KPI: "تقارير منتهية" is always based on search/dept only
-    const pastDueReportsForAll = filteredReportsBase.filter(r => getReportStatusWithReference(r.dueDate, today).isPastDue);
-    kpiPastDueValue.textContent = pastDueReportsForAll.length;
-
     // Notification dot logic remains the same (based on search/dept only)
     const upcomingOrDueTodayForNotification = nonPastDueOverall.filter(r => {
         const diff = diffInDays(r.dueDate, today);
-        return diff >= 0 && diff <= 2; // Today, Tomorrow, Day after tomorrow
+        return diff >= 0 && diff <= 2;
     }).length;
 
     if (notificationDot) {
         notificationDot.style.display = upcomingOrDueTodayForNotification > 0 ? 'block' : 'none';
     }
 
-    // Update active class on KPI cards
     Object.values(kpiCards).forEach(card => {
         if (card) card.classList.remove('kpi-active-filter');
     });
@@ -386,29 +483,22 @@ function applyAllFiltersAndRender() {
         });
     }
     
-    // If a KPI filter is active, apply it ON TOP of the (potentially) date-filtered set
+    // If a KPI filter is active, apply it to the already date-filtered (if any) and status-filtered set
     if (activeKpiFilterType) {
         if (activeKpiFilterType === 'total_reports') {
-            // tempReportsForTable is already correct (non-past-due, possibly date-filtered)
+            // "إجمالي التقارير القادمة" should show ALL upcoming reports, ignoring date range
+            tempReportsForTable = filteredReportsBase.filter(r => !getReportStatusWithReference(r.dueDate, today).isPastDue);
         } else if (activeKpiFilterType === 'period_reports') {
             // This KPI relies on date inputs, which are already applied above.
         } else if (activeKpiFilterType === 'due_today') {
-            tempReportsForTable = tempReportsForTable.filter(r => diffInDays(r.dueDate, today) === 0);
+            tempReportsForTable = filteredReportsBase.filter(r => diffInDays(r.dueDate, today) === 0);
         } else if (activeKpiFilterType === 'due_soon') {
-            tempReportsForTable = tempReportsForTable.filter(r => {
+            tempReportsForTable = filteredReportsBase.filter(r => {
                 const diff = diffInDays(r.dueDate, today);
                 return diff > 0 && diff <= 3; 
             });
         } else if (activeKpiFilterType === 'past_due') {
-            // If 'past_due' KPI is active, table should show only past_due from the base filter,
-            // then apply date range, and finally sort.
             tempReportsForTable = filteredReportsBase.filter(r => getReportStatusWithReference(r.dueDate, today).isPastDue);
-            if (startDateValue && endDateValue) {
-                tempReportsForTable = tempReportsForTable.filter(report => {
-                    const dueDate = new Date(report.dueDate);
-                    return dueDate >= startDateValue && dueDate <= endDateValue;
-                });
-            }
             // Sort past due reports: newest first
             tempReportsForTable.sort((a, b) => new Date(b.dueDate) - new Date(a.dueDate));
         }
@@ -422,7 +512,7 @@ function applyAllFiltersAndRender() {
     updateMonthFilterButtonsUI();
 
     const activeViewId = document.querySelector('.view.active')?.id;
-    if (activeViewId === 'analytics-section') renderAnalyticsCharts();
+    if (activeViewId === 'analytics-section') renderAnalyticsView();
     if (activeViewId === 'calendar-section') renderFullCalendar();
 }
 
@@ -568,61 +658,134 @@ function handleNavigation(event) {
     document.querySelectorAll('.main-content .view').forEach(view => {
         view.classList.toggle('active', view.id === viewId);
         if (view.id === viewId) {
-            if (viewId === 'analytics-section') renderAnalyticsCharts();
+            if (viewId === 'analytics-section') renderAnalyticsView();
             else if (viewId === 'calendar-section') renderFullCalendar();
         }
     });
 }
 
-function renderAnalyticsCharts() {
-    const dataForCharts = reportsForChartsAndCalendar;
-
-    const departmentCounts = dataForCharts.reduce((acc, r) => ({ ...acc, [r.department]: (acc[r.department] || 0) + 1 }), {});
-    const frequencyCounts = dataForCharts.reduce((acc, r) => ({ ...acc, [r.frequency]: (acc[r.frequency] || 0) + 1 }), {});
-
-    const chartOptions = (title) => ({
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: { position: 'bottom', labels: { font: { family: "'Cairo', sans-serif" } } },
-            tooltip: { bodyFont: { family: "'Cairo', sans-serif" }, titleFont: { family: "'Cairo', sans-serif" } }
-        }
-    });
-
-    const departmentChartCtx = document.getElementById('department-chart')?.getContext('2d');
-    if (departmentChartCtx) {
-        if (departmentChartInstance) departmentChartInstance.destroy();
-        departmentChartInstance = new Chart(departmentChartCtx, {
-            type: 'pie',
-            data: {
-                labels: Object.keys(departmentCounts),
-                datasets: [{
-                    label: 'التقارير حسب الجهة', data: Object.values(departmentCounts),
-                    backgroundColor: ['#C89638', '#bd9a5f', '#AEC6CF', '#E67E22', '#5cb85c', '#5bc0de', '#95A5A6', '#2C3E50', '#F1C40F', '#3498DB'],
-                    borderColor: '#FFFFFF', borderWidth: 2
-                }]
-            },
-            options: chartOptions('التقارير حسب الجهة')
-        });
+// --- Analytics Section Logic ---
+function populateAnalyticsFilter() {
+    if (!analyticsDepartmentFilter) return;
+    const departments = [...new Set(allReports.map(report => report.department))].sort((a, b) => a.localeCompare(b, 'ar'));
+    
+    while (analyticsDepartmentFilter.options.length > 1) {
+        analyticsDepartmentFilter.remove(1);
     }
 
-    const frequencyChartCtx = document.getElementById('frequency-chart')?.getContext('2d');
-    if (frequencyChartCtx) {
-        if (frequencyChartInstance) frequencyChartInstance.destroy();
-        frequencyChartInstance = new Chart(frequencyChartCtx, {
-            type: 'bar',
-            data: {
-                labels: Object.keys(frequencyCounts),
-                datasets: [{
-                    label: 'التقارير حسب التكرار', data: Object.values(frequencyCounts),
-                    backgroundColor: 'rgba(200, 150, 56, 0.8)',
-                    borderColor: 'rgba(200, 150, 56, 1)', borderWidth: 1
-                }]
-            },
-            options: { ...chartOptions('التقارير حسب التكرار'), scales: { y: { beginAtZero: true, ticks: { stepSize: 1, font: { family: "'Cairo', sans-serif" } } }, x: { ticks: { font: { family: "'Cairo', sans-serif" } } } } }
-        });
+    departments.forEach(dept => {
+        const option = document.createElement('option');
+        option.value = dept;
+        option.textContent = dept;
+        analyticsDepartmentFilter.appendChild(option);
+    });
+}
+
+function renderAnalyticsView() {
+    const selectedDept = analyticsDepartmentFilter.value;
+    const dataForAnalytics = filteredReportsBase; 
+
+    if (selectedDept === 'all') {
+        analyticsSummaryView.style.display = 'grid';
+        analyticsChartView.style.display = 'none';
+        renderNumericalSummary(dataForAnalytics);
+    } else {
+        analyticsSummaryView.style.display = 'none';
+        analyticsChartView.style.display = 'block';
+        renderMonthlyChartForDept(selectedDept, dataForAnalytics);
     }
 }
+
+function renderNumericalSummary(data) {
+    if (!analyticsSummaryView) return;
+    analyticsSummaryView.innerHTML = '';
+    
+    const departmentCounts = data.reduce((acc, report) => {
+        acc[report.department] = (acc[report.department] || 0) + 1;
+        return acc;
+    }, {});
+
+    const sortedDepartments = Object.keys(departmentCounts).sort((a, b) => a.localeCompare(b, 'ar'));
+
+    if (sortedDepartments.length === 0) {
+        analyticsSummaryView.innerHTML = '<p class="no-notifications">لا توجد بيانات لعرضها حسب الفلاتر الحالية.</p>';
+        return;
+    }
+
+    sortedDepartments.forEach(dept => {
+        const count = departmentCounts[dept];
+        const item = document.createElement('div');
+        item.className = 'summary-item';
+        item.innerHTML = `
+            <span class="summary-item-dept">${dept}</span>
+            <span class="summary-item-count">${count}</span>
+        `;
+        analyticsSummaryView.appendChild(item);
+    });
+}
+
+function renderMonthlyChartForDept(department, data) {
+    if (!monthlyDepartmentChartCanvas) return;
+
+    const departmentReports = data.filter(report => report.department === department);
+    const monthlyCounts = Array(12).fill(0); 
+
+    departmentReports.forEach(report => {
+        const month = new Date(report.dueDate).getMonth(); // 0-11
+        monthlyCounts[month]++;
+    });
+
+    const monthLabels = [
+        "يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو",
+        "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"
+    ];
+
+    if (monthlyDepartmentChartInstance) {
+        monthlyDepartmentChartInstance.destroy();
+    }
+
+    monthlyDepartmentChartInstance = new Chart(monthlyDepartmentChartCanvas, {
+        type: 'bar',
+        data: {
+            labels: monthLabels,
+            datasets: [{
+                label: `تقارير - ${department}`,
+                data: monthlyCounts,
+                backgroundColor: 'rgba(200, 150, 56, 0.8)', 
+                borderColor: 'rgba(200, 150, 56, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1,
+                        font: { family: "'Cairo', sans-serif" }
+                    }
+                },
+                x: {
+                    ticks: {
+                        font: { family: "'Cairo', sans-serif" }
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    bodyFont: { family: "'Cairo', sans-serif" },
+                    titleFont: { family: "'Cairo', sans-serif" }
+                }
+            }
+        }
+    });
+}
+
 
 function renderFullCalendar() {
     const calendarEl = document.getElementById('calendar');
@@ -686,6 +849,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     
     resetAllFiltersButton?.addEventListener('click', resetAllFilters);
+    exportPdfButton?.addEventListener('click', exportTableToPDF);
 
     Object.values(kpiCards).forEach(card => card?.addEventListener('click', handleKpiCardClick));
 
@@ -732,6 +896,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    analyticsDepartmentFilter?.addEventListener('change', renderAnalyticsView);
 
     modalCloseButton?.addEventListener('click', closeModal);
     
