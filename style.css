@@ -471,6 +471,23 @@ html:not([dir="rtl"]) .notifications-dropdown {
 .overview-header h2 {
     margin-bottom: 0; 
 }
+.action-btn-main { 
+    background-color: var(--accent-gold);
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 4px;
+    font-family: var(--font-family-base);
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+.action-btn-main i {
+    margin-left: 8px;
+}
+.action-btn-main:hover {
+    background-color: var(--accent-gold-muted);
+}
 
 
 .view {
