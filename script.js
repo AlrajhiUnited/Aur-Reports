@@ -204,9 +204,7 @@ function populateTable() {
         const row = reportsTableBody.insertRow();
         const cell = row.insertCell();
         cell.colSpan = 7;
-        cell.textContent = activeKpiFilterType === 'past_due' ? `لا توجد تقارير منتهية تطابق البحث الحالي.` :
-                           activeKpiFilterType ? `لا توجد تقارير تطابق فلتر (${activeKpiFilterName}) والبحث الحالي (مع استبعاد المنتهية).` :
-                           'لا توجد تقارير (غير منتهية) تطابق معايير البحث أو التصفية الحالية.';
+        cell.textContent = 'لا توجد تقارير تطابق معايير البحث أو التصفية الحالية.';
         cell.style.textAlign = 'center';
         cell.style.padding = '20px';
     } else {
@@ -214,7 +212,7 @@ function populateTable() {
             const row = reportsTableBody.insertRow();
             const statusInfo = getReportStatusWithReference(report.dueDate, getToday());
 
-            row.insertCell().textContent = index + 1;
+            row.insertCell().textContent = startIndex + index + 1; // Correct numbering across pages
 
             row.insertCell().textContent = report.department;
             row.insertCell().textContent = report.title;
@@ -298,40 +296,46 @@ function updateKPIs() {
     const endDateValue = endDateInput.value ? new Date(endDateInput.value) : null;
     if (endDateValue) endDateValue.setHours(23, 59, 59, 999);
 
+    // Base set for KPIs: reports matching search and department filters.
     let reportsInScopeForKpi = filteredReportsBase; 
+    
+    // **MODIFICATION 1: "إجمالي التقارير المستحقة" now includes ALL reports (past-due and upcoming) from the base filter.**
+    // This value is independent of the date filter.
+    kpiTotalReportsValue.textContent = reportsInScopeForKpi.length;
+
+    // Determine the set of reports within the selected date period.
+    let reportsInDatePeriod = reportsInScopeForKpi;
     if (startDateValue && endDateValue) {
-        reportsInScopeForKpi = filteredReportsBase.filter(report => {
+        reportsInDatePeriod = reportsInScopeForKpi.filter(report => {
             const dueDate = new Date(report.dueDate);
             return dueDate >= startDateValue && dueDate <= endDateValue;
         });
     }
     
-    const nonPastDueInScope = reportsInScopeForKpi.filter(r => !getReportStatusWithReference(r.dueDate, today).isPastDue);
-    
-    kpiTotalReportsValue.textContent = nonPastDueInScope.length;
-
+    // **MODIFICATION 2: "اجمالي تقارير الفترة" shows ALL reports within the date range.**
     if (startDateValue && endDateValue) {
-        kpiPeriodReportsValue.textContent = nonPastDueInScope.length;
+        kpiPeriodReportsValue.textContent = reportsInDatePeriod.length;
     } else {
-        kpiPeriodReportsValue.textContent = '-';
+        kpiPeriodReportsValue.textContent = '-'; // No period selected
     }
     
-    kpiDueTodayValue.textContent = nonPastDueInScope.filter(r => diffInDays(r.dueDate, today) === 0).length;
+    // The rest of the KPIs (Due Today, Due Soon, Past Due) should respect the date filter.
+    const nonPastDueInDatePeriod = reportsInDatePeriod.filter(r => !getReportStatusWithReference(r.dueDate, today).isPastDue);
+    const pastDueInDatePeriod = reportsInDatePeriod.filter(r => getReportStatusWithReference(r.dueDate, today).isPastDue);
+
+    kpiDueTodayValue.textContent = nonPastDueInDatePeriod.filter(r => diffInDays(r.dueDate, today) === 0).length;
     
-    // **MODIFIED: "مستحق خلال 3 أيام" now means reports due in the next 3 days (excluding today)**
-    kpiDueSoonValue.textContent = nonPastDueInScope.filter(r => {
+    kpiDueSoonValue.textContent = nonPastDueInDatePeriod.filter(r => {
         const diff = diffInDays(r.dueDate, today);
-        return diff > 0 && diff <= 3; // Day 1, Day 2, Day 3 from today
+        return diff > 0 && diff <= 3;
     }).length;
     
-    const pastDueReportsForAll = filteredReportsBase.filter(r => getReportStatusWithReference(r.dueDate, today).isPastDue);
-    kpiPastDueValue.textContent = pastDueReportsForAll.length;
+    kpiPastDueValue.textContent = pastDueInDatePeriod.length;
 
-    // Notification dot: still shows reports due today or within the next 2 days (status "due-today" or "due-soon")
-    const nonPastDueOverallForNotification = filteredReportsBase.filter(r => !getReportStatusWithReference(r.dueDate, today).isPastDue);
-    const upcomingOrDueTodayForNotification = nonPastDueOverallForNotification.filter(r => {
-        const diff = diffInDays(r.dueDate, today);
-        return diff >= 0 && diff <= 2; // Today, Tomorrow, Day after tomorrow
+    // Notification dot logic remains based on the overall set (not date-filtered).
+    const upcomingOrDueTodayForNotification = filteredReportsBase.filter(r => {
+        const status = getReportStatusWithReference(r.dueDate, today);
+        return !status.isPastDue && (status.class === 'status-due-today' || status.class === 'status-due-soon');
     }).length;
 
     if (notificationDot) {
@@ -383,22 +387,38 @@ function applyAllFiltersAndRender() {
         reportsForChartsAndCalendar = baseForChartsAndTable.filter(r => !getReportStatusWithReference(r.dueDate, today).isPastDue);
     }
     
-    let tempReportsForTable = [...reportsForChartsAndCalendar]; 
+    let tempReportsForTable;
 
     if (activeKpiFilterType) {
-        if (activeKpiFilterType === 'total_reports' || activeKpiFilterType === 'period_reports') {
-            // Already handled
-        } else if (activeKpiFilterType === 'due_today') {
-            tempReportsForTable = tempReportsForTable.filter(r => diffInDays(r.dueDate, today) === 0);
-        } else if (activeKpiFilterType === 'due_soon') {
-             // **MODIFIED: Reflects the new definition for "مستحق خلال 3 أيام" KPI**
-            tempReportsForTable = tempReportsForTable.filter(r => {
-                const diff = diffInDays(r.dueDate, today);
-                return diff > 0 && diff <= 3; 
-            });
-        } else if (activeKpiFilterType === 'past_due') {
-            tempReportsForTable = baseForChartsAndTable.filter(r => getReportStatusWithReference(r.dueDate, today).isPastDue);
+        switch (activeKpiFilterType) {
+            case 'total_reports':
+                // For the table, total_reports shows ALL reports (past-due and upcoming) from the date-filtered set
+                tempReportsForTable = [...baseForChartsAndTable];
+                break;
+            case 'period_reports':
+                // Same as total_reports, as it's already filtered by date
+                tempReportsForTable = [...baseForChartsAndTable];
+                break;
+            case 'due_today':
+                tempReportsForTable = reportsForChartsAndCalendar.filter(r => diffInDays(r.dueDate, today) === 0);
+                break;
+            case 'due_soon':
+                tempReportsForTable = reportsForChartsAndCalendar.filter(r => {
+                    const diff = diffInDays(r.dueDate, today);
+                    return diff > 0 && diff <= 3; 
+                });
+                break;
+            case 'past_due':
+                tempReportsForTable = baseForChartsAndTable.filter(r => getReportStatusWithReference(r.dueDate, today).isPastDue);
+                // **MODIFICATION 3: Sort past-due reports, newest first.**
+                tempReportsForTable.sort((a, b) => new Date(b.dueDate) - new Date(a.dueDate));
+                break;
+            default:
+                tempReportsForTable = [...reportsForChartsAndCalendar];
         }
+    } else {
+        // Default view: show non-past-due reports
+        tempReportsForTable = [...reportsForChartsAndCalendar];
     }
     
     reportsForDisplayInTable = tempReportsForTable;
