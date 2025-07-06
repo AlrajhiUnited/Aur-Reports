@@ -405,7 +405,7 @@ html:not([dir="rtl"]) .notifications-dropdown {
     display: block;
     font-weight: bold;
     color: var(--text-color-light);
-    font-size: 0.85rem; /* Reduced font size */
+    font-size: 0.85rem; 
     margin-bottom: 3px;
     white-space: nowrap; 
     overflow: hidden;
@@ -424,7 +424,7 @@ html:not([dir="rtl"]) .notifications-dropdown {
     padding: 3px 7px;
     border-radius: 12px;
     color: white;
-    font-size: 0.7rem; /* Reduced font size */
+    font-size: 0.75rem;
     font-weight: bold;
     margin-right: 5px; 
     line-height: 1.2; 
@@ -470,23 +470,6 @@ html:not([dir="rtl"]) .notifications-dropdown {
 }
 .overview-header h2 {
     margin-bottom: 0; 
-}
-.action-btn-main { 
-    background-color: var(--accent-gold);
-    color: white;
-    border: none;
-    padding: 8px 15px;
-    border-radius: 4px;
-    font-family: var(--font-family-base);
-    font-size: 0.9rem;
-    cursor: pointer;
-    transition: background-color 0.3s;
-}
-.action-btn-main i {
-    margin-left: 8px;
-}
-.action-btn-main:hover {
-    background-color: var(--accent-gold-muted);
 }
 
 
