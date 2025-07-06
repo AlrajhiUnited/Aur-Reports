@@ -4,20 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>لوحة متابعة التقارير - اتحاد الراجحي العقارية</title>
-    <!-- Google Fonts - Cairo -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap" rel="stylesheet">
-    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css" xintegrity="sha512-KfkfwYDsLkIlwQp6LFnl8zNdLGxu9YAA1QvwINks4PhcElQSvqcyVLLD9aMhXd13uQjoXtEKNosOWaZqXgel0g==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-    <!-- FullCalendar -->
     <link href='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css' rel='stylesheet' />
-    <!-- Custom CSS -->
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="dashboard-container">
-        <!-- Sidebar -->
         <nav class="sidebar">
             <div class="sidebar-header">
                 <img src="img/logo.png" alt="شعار شركة اتحاد الراجحي العقارية" id="company-logo" onerror="this.onerror=null;this.src='https://placehold.co/160x50/FFFFFF/C89638?text=شعار+الشركة&font=cairo';">
@@ -56,9 +51,7 @@
             </div>
         </nav>
 
-        <!-- Main Content -->
         <main class="main-content">
-            <!-- Top Bar -->
             <header class="top-bar">
                 <h1>لوحة متابعة التقارير</h1>
                 <div class="top-bar-controls">
@@ -66,8 +59,7 @@
                     <div class="filter-container">
                          <select id="department-filter">
                             <option value="">كل الجهات</option>
-                            <!-- Options will be populated by JavaScript -->
-                        </select>
+                            </select>
                     </div>
                     <div class="notifications-container">
                         <button id="notifications-btn" aria-label="التنبيهات">
@@ -77,8 +69,7 @@
                         <div id="notifications-dropdown" class="notifications-dropdown">
                             <div class="notifications-header">تنبيهات التقارير</div>
                             <ul id="notifications-list">
-                                <!-- Notification items will be populated here -->
-                            </ul>
+                                </ul>
                             <div id="notifications-footer" class="notifications-footer" style="display:none;">
                                 <a href="#" id="view-all-notifications-link">عرض كل التنبيهات في الجدول</a>
                             </div>
@@ -87,14 +78,11 @@
                 </div>
             </header>
 
-            <!-- Content Wrapper -->
             <div class="content-wrapper">
-                <!-- Overview Section -->
                 <section id="overview-section" class="view active">
                     <div class="overview-header">
                         <h2>نظرة عامة <span id="kpi-filter-indicator" style="font-size: 0.7em; color: var(--accent-gold); display: none;"></span></h2>
-                        <button id="export-pdf-btn" class="action-btn-main"><i class="fas fa-file-pdf"></i> تصدير إلى PDF</button>
-                    </div>
+                        </div>
                     <div class="kpi-cards-container">
                         <div class="kpi-card" id="kpi-total-reports-card" data-kpi-type="total_reports">
                             <div class="kpi-icon"><i class="fas fa-file-alt"></i></div>
@@ -147,33 +135,26 @@
                                 </tr>
                             </thead>
                             <tbody id="reports-table-body">
-                                <!-- Table rows will be populated by JavaScript -->
-                            </tbody>
+                                </tbody>
                         </table>
                         <div id="pagination-controls">
-                            <!-- Pagination buttons will be populated by JavaScript -->
-                        </div>
+                            </div>
                     </div>
                 </section>
 
-                <!-- Analytics Section -->
                 <section id="analytics-section" class="view">
                     <div class="analytics-header">
                         <h2>التحليلات الرسومية</h2>
                         <div class="analytics-filter-container">
-                            <label for="analytics-department-filter">عرض تقارير:</label>
+                            <label for="analytics-department-filter">عرض تحليل لـ:</label>
                             <select id="analytics-department-filter">
                                 <option value="all">جميع الإدارات (ملخص عددي)</option>
-                                <!-- Options will be populated by JavaScript -->
-                            </select>
+                                </select>
                         </div>
                     </div>
                     <div id="analytics-content-wrapper">
-                        <!-- Numerical Summary View -->
                         <div id="analytics-summary-view">
-                            <!-- Numerical data will be populated here -->
-                        </div>
-                        <!-- Monthly Chart View (Initially hidden) -->
+                            </div>
                         <div id="analytics-chart-view" style="display: none;">
                             <div class="chart-card">
                                 <canvas id="monthly-department-chart"></canvas>
@@ -182,7 +163,6 @@
                     </div>
                 </section>
 
-                <!-- Calendar Section -->
                 <section id="calendar-section" class="view">
                     <h2>التقويم التفاعلي</h2>
                     <div id="calendar"></div>
@@ -191,7 +171,6 @@
         </main>
     </div>
 
-    <!-- Event Modal -->
     <div id="event-modal" class="modal">
         <div class="modal-content">
             <span class="close-button">&times;</span>
@@ -204,12 +183,9 @@
         </div>
     </div>
 
-    <!-- Scripts at the end of body for better performance -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js'></script>
     <script src='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/locales/ar.js'></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
     <script src="script.js"></script>
 </body>
 </html>
