@@ -22,15 +22,9 @@ const departmentFilter = document.getElementById('department-filter');
 const startDateInput = document.getElementById('start-date');
 const endDateInput = document.getElementById('end-date');
 const notificationDot = document.getElementById('notification-dot');
-const kpiFilterIndicator = document.getElementById('kpi-filter-indicator');
 const resetAllFiltersButton = document.getElementById('reset-all-filters-btn');
 const filterCurrentMonthButton = document.getElementById('filter-current-month');
 const filterNextMonthButton = document.getElementById('filter-next-month');
-const notificationsBtn = document.getElementById('notifications-btn');
-const notificationsDropdown = document.getElementById('notifications-dropdown');
-const notificationsList = document.getElementById('notifications-list');
-const notificationsFooter = document.getElementById('notifications-footer');
-const viewAllNotificationsLink = document.getElementById('view-all-notifications-link');
 const eventModal = document.getElementById('event-modal');
 const modalCloseButton = eventModal.querySelector('.close-button');
 const modalEmailButton = document.getElementById('modal-email-button');
@@ -118,78 +112,78 @@ function applyAllFiltersAndRender() {
         return matchesSearch && matchesDepartment;
     });
 
-    // 2. Apply date filter to the base-filtered data
-    const dateFilteredReports = (startDateValue && endDateValue)
-        ? baseFilteredReports.filter(report => {
-            const dueDate = new Date(report.dueDate);
-            return dueDate >= startDateValue && dueDate <= endDateValue;
-          })
-        : baseFilteredReports;
+    // 2. Separate base-filtered reports into upcoming and past-due
+    const upcomingBaseReports = baseFilteredReports.filter(r => !getReportStatus(r.dueDate, today).isPastDue);
+    const pastDueBaseReports = baseFilteredReports.filter(r => getReportStatus(r.dueDate, today).isPastDue);
 
-    // 3. Update KPI cards using the correctly filtered data subsets
-    updateKPIs(baseFilteredReports, dateFilteredReports, today);
+    // 3. Apply date filters to each group separately
+    const filterByDate = (reports) => (startDateValue && endDateValue)
+        ? reports.filter(r => { const d = new Date(r.dueDate); return d >= startDateValue && d <= endDateValue; })
+        : reports;
+        
+    const upcomingDateFilteredReports = filterByDate(upcomingBaseReports);
+    const pastDueDateFilteredReports = filterByDate(pastDueBaseReports);
+
+    // 4. Update KPI cards
+    updateKPIs(upcomingBaseReports, upcomingDateFilteredReports, pastDueDateFilteredReports, today);
     
-    // 4. Determine which data to show in the table based on the active KPI filter
+    // 5. Determine which data to show in the table
     let reportsForDisplay;
     switch (activeKpiFilterType) {
         case 'total_reports':
-            reportsForDisplay = baseFilteredReports; // Shows all reports matching base filters
+            reportsForDisplay = upcomingBaseReports;
             break;
         case 'period_reports':
-            reportsForDisplay = dateFilteredReports; // Shows all reports matching date filters
+            reportsForDisplay = upcomingDateFilteredReports;
             break;
         case 'due_today':
-            reportsForDisplay = dateFilteredReports.filter(r => diffInDays(r.dueDate, today) === 0);
+            reportsForDisplay = upcomingDateFilteredReports.filter(r => diffInDays(r.dueDate, today) === 0);
             break;
         case 'due_soon':
-            reportsForDisplay = dateFilteredReports.filter(r => {
-                const diff = diffInDays(r.dueDate, today);
-                return diff > 0 && diff <= 3;
-            });
+            reportsForDisplay = upcomingDateFilteredReports.filter(r => diffInDays(r.dueDate, today) > 0 && diffInDays(r.dueDate, today) <= 3);
             break;
         case 'past_due':
-            reportsForDisplay = dateFilteredReports.filter(r => getReportStatus(r.dueDate, today).isPastDue);
-            reportsForDisplay.sort((a, b) => new Date(b.dueDate) - new Date(a.dueDate)); // Newest first
+            reportsForDisplay = pastDueDateFilteredReports;
+            reportsForDisplay.sort((a, b) => new Date(b.dueDate) - new Date(a.dueDate));
             break;
         default:
-            // Default view shows non-past-due reports from the date-filtered set
-            reportsForDisplay = dateFilteredReports.filter(r => !getReportStatus(r.dueDate, today).isPastDue);
+            // Default view is upcoming reports within the date filter (or all upcoming if no date filter)
+            reportsForDisplay = upcomingDateFilteredReports;
     }
 
-    // 5. Render everything
+    // 6. Render UI
     currentPage = 1;
-    populateTable(reportsForDisplay);
-    updateUIAfterFiltering(baseFilteredReports, reportsForDisplay, today);
+    populateTable(reportsForDisplay, today);
+    updateUIAfterFiltering(upcomingBaseReports, reportsForDisplay, today);
 }
 
-function updateKPIs(baseFilteredData, dateFilteredData, today) {
-    // KPI 1: Total Reports (only respects search/department)
-    document.getElementById('kpi-total-reports-value').textContent = baseFilteredData.length;
+function updateKPIs(upcomingBase, upcomingDateFiltered, pastDueDateFiltered, today) {
+    // KPI 1: Total Upcoming Reports (only respects search/department)
+    document.getElementById('kpi-total-reports-value').textContent = upcomingBase.length;
 
-    // KPI 2: Period Reports (respects search/department/date)
+    // KPI 2: Upcoming Period Reports (respects search/department/date)
     const periodReportsCardLabel = document.querySelector('#kpi-period-reports-card .kpi-label');
     if (startDateInput.value && endDateInput.value) {
-        document.getElementById('kpi-period-reports-value').textContent = dateFilteredData.length;
-        periodReportsCardLabel.textContent = 'تقارير الفترة المحددة';
+        document.getElementById('kpi-period-reports-value').textContent = upcomingDateFiltered.length;
+        periodReportsCardLabel.textContent = 'تقارير الفترة القادمة';
     } else {
         document.getElementById('kpi-period-reports-value').textContent = '-';
-        periodReportsCardLabel.textContent = 'إجمالي تقارير الفترة';
+        periodReportsCardLabel.textContent = 'تقارير الفترة المحددة';
     }
 
-    // Other KPIs (respect search/department/date)
-    const nonPastDueInDatePeriod = dateFilteredData.filter(r => !getReportStatus(r.dueDate, today).isPastDue);
-    const pastDueInDatePeriod = dateFilteredData.filter(r => getReportStatus(r.dueDate, today).isPastDue);
-
-    document.getElementById('kpi-due-today-value').textContent = nonPastDueInDatePeriod.filter(r => diffInDays(r.dueDate, today) === 0).length;
-    document.getElementById('kpi-due-soon-value').textContent = nonPastDueInDatePeriod.filter(r => diffInDays(r.dueDate, today) > 0 && diffInDays(r.dueDate, today) <= 3).length;
-    document.getElementById('kpi-past-due-value').textContent = pastDueInDatePeriod.length;
+    // Other KPIs for upcoming reports (respect search/department/date)
+    document.getElementById('kpi-due-today-value').textContent = upcomingDateFiltered.filter(r => diffInDays(r.dueDate, today) === 0).length;
+    document.getElementById('kpi-due-soon-value').textContent = upcomingDateFiltered.filter(r => diffInDays(r.dueDate, today) > 0 && diffInDays(r.dueDate, today) <= 3).length;
+    
+    // Past Due KPI (respects search/department/date)
+    document.getElementById('kpi-past-due-value').textContent = pastDueDateFiltered.length;
 }
 
-function updateUIAfterFiltering(baseFilteredReports, reportsForTable, today) {
-    // Update notification dot (based on base filters, not date)
-    const upcomingForNotification = baseFilteredReports.filter(r => {
+function updateUIAfterFiltering(upcomingBaseReports, reportsForTable, today) {
+    // Update notification dot (based on upcoming reports from base filters)
+    const upcomingForNotification = upcomingBaseReports.filter(r => {
         const status = getReportStatus(r.dueDate, today);
-        return !status.isPastDue && (status.class === 'status-due-today' || status.class === 'status-due-soon');
+        return status.class === 'status-due-today' || status.class === 'status-due-soon';
     }).length;
     notificationDot.style.display = upcomingForNotification > 0 ? 'block' : 'none';
 
@@ -203,9 +197,8 @@ function updateUIAfterFiltering(baseFilteredReports, reportsForTable, today) {
 
     // Update views if they are active
     const activeViewId = document.querySelector('.view.active')?.id;
-    const dataForChartsAndCalendar = activeKpiFilterType === 'past_due'
-        ? reportsForTable // Use the already filtered past-due reports
-        : reportsForTable.filter(r => !getReportStatus(r.dueDate, today).isPastDue); // Exclude past-due for other views
+    // For charts and calendar, always show the currently displayed data in the table
+    const dataForChartsAndCalendar = reportsForTable;
 
     if (activeViewId === 'analytics-section') renderAnalyticsCharts(dataForChartsAndCalendar);
     if (activeViewId === 'calendar-section') renderFullCalendar(dataForChartsAndCalendar, today);
@@ -213,7 +206,7 @@ function updateUIAfterFiltering(baseFilteredReports, reportsForTable, today) {
 
 
 // --- UI Population Functions ---
-function populateTable(reports) {
+function populateTable(reports, today) {
     reportsTableBody.innerHTML = '';
     const startIndex = (currentPage - 1) * reportsPerPage;
     const paginatedReports = reports.slice(startIndex, startIndex + reportsPerPage);
@@ -226,7 +219,6 @@ function populateTable(reports) {
         cell.style.textAlign = 'center';
         cell.style.padding = '20px';
     } else {
-        const today = getToday();
         paginatedReports.forEach((report, index) => {
             const row = reportsTableBody.insertRow();
             const statusInfo = getReportStatus(report.dueDate, today);
@@ -261,7 +253,10 @@ function displayPagination(totalReports) {
         if (isActive) button.classList.add('active');
         button.onclick = () => {
             currentPage = pageNum;
-            applyAllFiltersAndRender(); // Re-filter to get the correct list and then slice the new page
+            // We don't need to re-filter, just re-populate the table for the new page
+            // But the current logic re-filters anyway, which is fine, just less efficient.
+            // Let's stick with the current logic for simplicity.
+            applyAllFiltersAndRender();
         };
         return button;
     };
