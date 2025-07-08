@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Firestore Data Uploader</title>
+</head>
+<body>
+    <h1>Firestore Data Uploader</h1>
+    <p>Open the browser console to see the progress.</p>
+    <button id="uploadBtn">Start Upload</button>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getFirestore, collection, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // 1. Your Firebase Config is now included.
+        const firebaseConfig = {
+            apiKey: "AIzaSyAFWBnmsv-2iB14s37q4Xx7dZ7wvfYLoBY",
+            authDomain: "reports-dashboard-af9a6.firebaseapp.com",
+            projectId: "reports-dashboard-af9a6",
+            storageBucket: "reports-dashboard-af9a6.firebasestorage.app",
+            messagingSenderId: "6422588883",
+            appId: "1:6422588883:web:b02d31c67ff76ce1251326",
+            measurementId: "G-S7345D1W5H"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        async function uploadData() {
+            document.getElementById('uploadBtn').disabled = true;
+            document.getElementById('uploadBtn').textContent = 'Uploading...';
+
+            try {
+                // 2. Make sure your data.json file is in the same directory
+                const response = await fetch('./data.json');
+                const data = await response.json();
+
+                const reportsCollection = collection(db, 'reports');
+                const batch = writeBatch(db);
+
+                console.log(`Starting to process ${data.length} records...`);
+
+                data.forEach(item => {
+                    // Create a new document reference with an auto-generated ID in the "reports" collection
+                    const docRef = doc(reportsCollection); 
+                    
+                    const reportData = {
+                        department: item[1],
+                        title: item[2],
+                        frequency: item[3],
+                        dueDate: item[4]
+                    };
+
+                    batch.set(docRef, reportData);
+                });
+
+                await batch.commit();
+                console.log('SUCCESS: All data has been uploaded to Firestore!');
+                alert('All data has been uploaded successfully!');
+                document.getElementById('uploadBtn').textContent = 'Upload Complete';
+
+            } catch (error) {
+                console.error("Error uploading data: ", error);
+                alert(`An error occurred: ${error.message}`);
+                document.getElementById('uploadBtn').disabled = false;
+                document.getElementById('uploadBtn').textContent = 'Start Upload';
+            }
+        }
+
+        document.getElementById('uploadBtn').addEventListener('click', uploadData);
+    </script>
+</body>
+</html>
