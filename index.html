@@ -9,6 +9,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" xintegrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link href='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css' rel='stylesheet' />
+    <!-- FIX: Add Flatpickr CSS library -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
@@ -22,6 +24,7 @@
                 <li class="nav-item active" data-view="overview-section"><a href="#"><i class="fas fa-tachometer-alt"></i> <span>نظرة عامة</span></a></li>
                 <li class="nav-item" data-view="analytics-section"><a href="#"><i class="fas fa-chart-pie"></i> <span>التحليلات</span></a></li>
                 <li class="nav-item" data-view="calendar-section"><a href="#"><i class="fas fa-calendar-alt"></i> <span>التقويم</span></a></li>
+                <li class="nav-item" id="admin-nav-item" data-view="admin-section"><a href="#"><i class="fas fa-cogs"></i> <span>لوحة التحكم</span></a></li>
             </ul>
             <div class="sidebar-filter-section">
                 <h3>تصفية حسب التاريخ</h3>
@@ -55,7 +58,6 @@
                 <div class="top-bar-controls">
                     <input type="search" id="search-input" placeholder="ابحث عن تقرير...">
                     <select id="department-filter"><option value="">كل الجهات</option></select>
-                    <button id="admin-action-btn" class="action-button-primary"><i class="fas fa-user-shield"></i> لوحة التحكم</button>
                     <div class="notifications-container">
                         <button id="notifications-btn" aria-label="التنبيهات"><i class="fas fa-bell"></i><span id="notification-dot" class="notification-dot" style="display: none;"></span></button>
                         <div id="notifications-dropdown" class="notifications-dropdown">
@@ -105,25 +107,58 @@
                 <section id="calendar-section" class="view">
                     <h2>التقويم التفاعلي</h2><div id="calendar"></div>
                 </section>
+                <section id="admin-section" class="view">
+                    <h2><i class="fas fa-cogs"></i> لوحة التحكم</h2>
+                    <div class="admin-controls">
+                        <input type="search" id="admin-search-input" placeholder="ابحث عن تقرير لتعديله...">
+                        <button id="admin-add-new-btn" class="action-button-primary"><i class="fas fa-plus"></i> إضافة تقرير جديد</button>
+                    </div>
+                    <div class="table-container">
+                        <table id="admin-reports-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 5%;">م</th>
+                                    <th style="width: 20%;">الجهة</th>
+                                    <th style="width: 30%;">عنوان التقرير</th>
+                                    <th style="width: 10%;">التكرار</th>
+                                    <th style="width: 15%;">تاريخ الاستحقاق</th>
+                                    <th style="width: 10%;">الحالة</th>
+                                    <th style="width: 10%;">إجراءات</th>
+                                </tr>
+                            </thead>
+                            <tbody id="admin-reports-table-body"></tbody>
+                        </table>
+                    </div>
+                </section>
             </div>
         </main>
     </div>
 
     <!-- Modals -->
     <div id="password-modal" class="modal"><div class="modal-content small"><span class="close-button">&times;</span><div class="modal-header"><h3><i class="fas fa-key"></i> الوصول للمسؤول</h3></div><form id="password-form"><div class="modal-body"><p>الرجاء إدخال كلمة المرور للمتابعة.</p><div class="form-group"><label for="admin-password">كلمة المرور</label><input type="password" id="admin-password" required></div></div><div class="modal-actions"><button type="submit" class="action-button-primary">دخول</button></div></form></div></div>
-    <div id="admin-modal" class="modal"><div class="modal-content large"><span class="close-button">&times;</span><div class="modal-header"><h3><i class="fas fa-cogs"></i> لوحة التحكم</h3></div><div class="admin-controls"><input type="search" id="admin-search-input" placeholder="ابحث عن تقرير لتعديله..."><button id="admin-add-new-btn" class="action-button-primary"><i class="fas fa-plus"></i> إضافة تقرير جديد</button></div><div id="admin-reports-list" class="modal-body"></div></div></div>
-    <div id="form-modal" class="modal"><div class="modal-content medium"><span class="close-button">&times;</span><div class="modal-header"><h3 id="form-modal-title"></h3></div><form id="report-form"><input type="hidden" id="report-id"><input type="hidden" id="edit-mode"><input type="hidden" id="original-title"><div class="modal-body"><div class="form-grid"><div class="form-group"><label for="report-department">الجهة المسؤولة</label><input type="text" id="report-department" list="department-list" required><datalist id="department-list"></datalist></div><div class="form-group"><label for="report-title">عنوان التقرير</label><input type="text" id="report-title" required></div></div><div class="form-group"><label for="report-frequency-text">وصف التكرار (مثال: أسبوعي، شهري)</label><input type="text" id="report-frequency-text" required></div><div id="single-due-date-section" class="form-group" style="display: none;"><label for="report-single-dueDate">تاريخ الاستحقاق</label><input type="date" id="report-single-dueDate"></div><div id="recurrence-section"><hr><p>لإنشاء أو تعديل تقارير متكررة، حدد النوع وتفاصيل التكرار.</p><div class="form-grid"><div class="form-group"><label for="report-recurrence-type">نوع التكرار</label><select id="report-recurrence-type"><option value="none">مرة واحدة فقط</option><option value="weekly">أسبوعي</option><option value="monthly">شهري</option><option value="quarterly">ربع سنوي</option><option value="semi-annually">نصف سنوي</option><option value="annually">سنوي</option></select></div><div class="form-group" id="recurrence-day-selector" style="display: none;"><label for="recurrence-day">يوم التكرار</label><select id="recurrence-day"></select></div></div><div class="form-grid recurrence-dates"><div class="form-group"><label for="report-startDate">تاريخ البدء</label><input type="date" id="report-startDate" required></div><div class="form-group" id="recurrence-end-date-group"><label for="report-endDate">تاريخ انتهاء التكرار</label><input type="date" id="report-endDate" required></div></div></div></div><div class="modal-actions"><button type="submit" id="save-report-btn" class="action-button-primary">حفظ التغييرات</button></div></form></div></div>
+    <div id="form-modal" class="modal"><div class="modal-content medium"><span class="close-button">&times;</span><div class="modal-header"><h3 id="form-modal-title"></h3></div><form id="report-form"><input type="hidden" id="report-id"><input type="hidden" id="edit-mode"><input type="hidden" id="original-title"><div class="modal-body"><div class="form-grid"><div class="form-group"><label for="report-department">الجهة المسؤولة</label><input type="text" id="report-department" list="department-list" required><datalist id="department-list"></datalist></div><div class="form-group"><label for="report-title">عنوان التقرير</label><input type="text" id="report-title" required></div></div><div class="form-group"><label for="report-frequency-text">وصف التكرار (مثال: أسبوعي، شهري)</label><input type="text" id="report-frequency-text" required></div>
+    <!-- FIX: Changed input type from "date" to "text" for Flatpickr -->
+    <div id="single-due-date-section" class="form-group" style="display: none;"><label for="report-single-dueDate">تاريخ الاستحقاق</label><input type="text" id="report-single-dueDate" placeholder="YYYY-MM-DD"></div>
+    <div id="recurrence-section"><hr><p>لإنشاء أو تعديل تقارير متكررة، حدد النوع وتفاصيل التكرار.</p><div class="form-grid"><div class="form-group"><label for="report-recurrence-type">نوع التكرار</label><select id="report-recurrence-type"><option value="none">مرة واحدة فقط</option><option value="weekly">أسبوعي</option><option value="monthly">شهري</option><option value="quarterly">ربع سنوي</option><option value="semi-annually">نصف سنوي</option><option value="annually">سنوي</option></select></div><div class="form-group" id="recurrence-day-selector" style="display: none;"><label for="recurrence-day">يوم التكرار</label><select id="recurrence-day"></select></div></div><div class="form-grid recurrence-dates">
+    <!-- FIX: Changed input type from "date" to "text" for Flatpickr -->
+    <div class="form-group"><label for="report-startDate">تاريخ البدء</label><input type="text" id="report-startDate" required placeholder="YYYY-MM-DD"></div>
+    <!-- FIX: Changed input type from "date" to "text" for Flatpickr -->
+    <div class="form-group" id="recurrence-end-date-group"><label for="report-endDate">تاريخ انتهاء التكرار</label><input type="text" id="report-endDate" required placeholder="YYYY-MM-DD"></div>
+    </div></div></div><div class="modal-actions"><button type="submit" id="save-report-btn" class="action-button-primary">حفظ التغييرات</button></div></form></div></div>
     <div id="confirm-modal" class="modal"><div class="modal-content small"><span class="close-button">&times;</span><div class="modal-header"><h3><i class="fas fa-exclamation-triangle"></i> تأكيد الإجراء</h3></div><div class="modal-body"><p id="confirm-modal-text"></p></div><div class="modal-actions"><button id="confirm-all-btn" class="action-button-danger"></button><button id="confirm-one-btn" class="action-button-primary"></button><button id="confirm-cancel-btn" class="action-button-secondary">إلغاء</button></div></div></div>
 
     <script src='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js'></script>
     <script src='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/locales/ar.js'></script>
     
+    <!-- FIX: Add Flatpickr JS library and Arabic locale -->
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://npmcdn.com/flatpickr/dist/l10n/ar.js"></script>
+
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getFirestore, collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc, writeBatch, query, where, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         
-        // This configuration is for demonstration. Replace with your actual Firebase config.
         const firebaseConfig = {
             apiKey: "AIzaSyAFWBnmsv-2iB14s37q4Xx7dZ7wvfYLoBY",
             authDomain: "reports-dashboard-af9a6.firebaseapp.com",
