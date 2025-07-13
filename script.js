@@ -11,6 +11,9 @@ document.addEventListener('DOMContentLoaded', () => {
     let calendarInstance = null;
     let eventDates = new Set();
     let currentFilteredData = [];
+    let lastActiveView = 'overview-section';
+    // FIX: Add variables for the sidebar date pickers
+    let startDatePicker, endDatePicker;
 
     // --- DOM Element Cache ---
     const DOMElements = {
@@ -25,10 +28,8 @@ document.addEventListener('DOMContentLoaded', () => {
         notificationsBtn: document.getElementById('notifications-btn'),
         notificationsDropdown: document.getElementById('notifications-dropdown'),
         notificationsList: document.getElementById('notifications-list'),
-        adminActionBtn: document.getElementById('admin-action-btn'),
         passwordModal: document.getElementById('password-modal'),
         passwordForm: document.getElementById('password-form'),
-        adminModal: document.getElementById('admin-modal'),
         formModal: document.getElementById('form-modal'),
         reportForm: document.getElementById('report-form'),
         confirmModal: document.getElementById('confirm-modal'),
@@ -39,6 +40,9 @@ document.addEventListener('DOMContentLoaded', () => {
         departmentChartEl: document.getElementById('department-chart'),
         frequencyChartEl: document.getElementById('frequency-chart'),
         departmentDatalist: document.getElementById('department-list'),
+        adminNavItem: document.getElementById('admin-nav-item'),
+        adminReportsTableBody: document.getElementById('admin-reports-table-body'),
+        adminSearchInput: document.getElementById('admin-search-input'),
     };
 
     // --- Utility Functions ---
@@ -60,8 +64,8 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     
     const showModal = (modal) => modal.style.display = 'block';
-    const hideModal = (modal, event) => {
-        if (event) event.stopPropagation();
+    const hideModal = (modal) => {
+        if (!modal) return;
         modal.style.display = 'none';
     };
 
@@ -170,6 +174,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!activeView) return;
         if (activeView.id === 'analytics-section') renderAnalyticsCharts(currentFilteredData);
         if (activeView.id === 'calendar-section') renderFullCalendar(currentFilteredData, today);
+        if(activeView.id === 'admin-section') populateAdminTable();
     };
 
     const updateNotificationDot = (upcomingBase, today) => {
@@ -263,64 +268,47 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // --- Modals & Admin Logic ---
-    const enableAdminFeatures = () => {
-        isAdmin = true;
-        renderUI();
-    };
-
-    const handleAdminClick = () => {
-        if (isAdmin) {
-            openAdminManagementModal();
-        } else {
-            showModal(DOMElements.passwordModal);
-            document.getElementById('admin-password').focus();
-        }
-    };
-    
     const handlePasswordSubmit = (e) => {
         e.preventDefault();
         const password = document.getElementById('admin-password').value;
         if (password === ADMIN_PASSWORD) {
-            hideModal(DOMElements.passwordModal, e);
-            enableAdminFeatures();
-            openAdminManagementModal();
+            isAdmin = true;
+            hideModal(DOMElements.passwordModal);
+            DOMElements.adminNavItem.click();
         } else {
             alert("كلمة المرور غير صحيحة.");
         }
         DOMElements.passwordForm.reset();
     };
 
-    const openAdminManagementModal = () => {
-        document.getElementById('admin-search-input').value = '';
-        populateAdminList();
-        showModal(DOMElements.adminModal);
-    };
-
-    const populateAdminList = (searchTerm = '') => {
-        const listContainer = document.getElementById('admin-reports-list');
-        listContainer.innerHTML = '';
+    const populateAdminTable = (searchTerm = '') => {
+        const tableBody = DOMElements.adminReportsTableBody;
+        tableBody.innerHTML = '';
         const filtered = allReports
-            .filter(r => r.title.toLowerCase().includes(searchTerm.toLowerCase()))
+            .filter(r => !searchTerm || r.title.toLowerCase().includes(searchTerm.toLowerCase()))
             .sort((a,b) => new Date(a.dueDate) - new Date(b.dueDate));
 
         if (filtered.length === 0) {
-            listContainer.innerHTML = '<div class="admin-report-item">لا توجد تقارير تطابق البحث.</div>';
+            tableBody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 20px;">لا توجد تقارير تطابق البحث.</td></tr>`;
             return;
         }
-        filtered.forEach(report => {
-            const item = document.createElement('div');
-            item.className = 'admin-report-item';
-            item.innerHTML = `
-                <div class="report-info">
-                    <span class="title">${report.title}</span>
-                    <span class="details">${report.department} | ${new Date(report.dueDate).toLocaleDateString('ar-EG', { year: 'numeric', month: '2-digit', day: '2-digit' })}</span>
-                </div>
-                <div class="actions">
-                     <button class="action-button" onclick="window.confirmUpdateById('${report.id}')" title="تعديل"><i class="fas fa-edit"></i></button>
-                     <button class="action-button delete-btn" onclick="window.confirmDeleteById('${report.id}')" title="حذف"><i class="fas fa-trash"></i></button>
-                </div>
+        filtered.forEach((report, index) => {
+            const row = tableBody.insertRow();
+            const statusInfo = getReportStatus(report.dueDate, getToday());
+            row.innerHTML = `
+                <td>${index + 1}</td>
+                <td>${report.department}</td>
+                <td>${report.title}</td>
+                <td>${report.frequency}</td>
+                <td>${new Date(report.dueDate).toLocaleDateString('ar-EG', { year: 'numeric', month: '2-digit', day: '2-digit' })}</td>
+                <td><span class="status-tag ${statusInfo.class}">${statusInfo.text}</span></td>
+                <td>
+                    <div class="actions-container">
+                         <button class="action-button" onclick="window.confirmUpdateById('${report.id}')" title="تعديل"><i class="fas fa-edit"></i></button>
+                         <button class="action-button delete-btn" onclick="window.confirmDeleteById('${report.id}')" title="حذف"><i class="fas fa-trash"></i></button>
+                    </div>
+                </td>
             `;
-            listContainer.appendChild(item);
         });
     };
 
@@ -351,7 +339,6 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('report-endDate').value = '';
         }
         
-        hideModal(DOMElements.adminModal);
         showModal(DOMElements.formModal);
     };
     
@@ -364,7 +351,6 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('single-due-date-section').style.display = 'none';
         document.getElementById('recurrence-end-date-group').style.display = 'flex';
         updateRecurrenceUI();
-        hideModal(DOMElements.adminModal);
         showModal(DOMElements.formModal);
     };
 
@@ -428,7 +414,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } else { // Add mode
                 await createRecurrentReports();
             }
-            hideModal(DOMElements.formModal, event);
+            hideModal(DOMElements.formModal);
         } catch (e) {
             console.error("Error saving document(s): ", e);
             alert("حدث خطأ أثناء حفظ التقرير.");
@@ -551,8 +537,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const batch = writeBatch(db);
         querySnapshot.forEach((doc) => batch.delete(doc.ref));
         await batch.commit();
-        if (DOMElements.adminModal.style.display === 'block') {
-            populateAdminList(document.getElementById('admin-search-input').value);
+        if (document.getElementById('admin-section').classList.contains('active')) {
+            populateAdminTable(DOMElements.adminSearchInput.value);
         }
     }
 
@@ -560,8 +546,8 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const { doc, deleteDoc } = window.firebase;
             await deleteDoc(doc(window.db, 'reports', id));
-            if (DOMElements.adminModal.style.display === 'block') {
-                populateAdminList(document.getElementById('admin-search-input').value);
+            if (document.getElementById('admin-section').classList.contains('active')) {
+                populateAdminTable(DOMElements.adminSearchInput.value);
             }
         } catch (error) {
             console.error("Error deleting report: ", error);
@@ -583,11 +569,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         const firstDay = new Date(year, month, 1);
         const lastDay = new Date(year, month + 1, 0);
-        DOMElements.startDateInput.value = firstDay.toISOString().split('T')[0];
-        DOMElements.endDateInput.value = lastDay.toISOString().split('T')[0];
-        activeKpiFilterType = null;
-        currentPage = 1;
-        renderUI();
+        startDatePicker.setDate(firstDay, true);
+        endDatePicker.setDate(lastDay, true);
     };
     
     const toggleNotificationsDropdown = () => {
@@ -621,8 +604,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // --- Event Listeners Setup ---
     const setupEventListeners = () => {
-        // Filters
-        [DOMElements.searchInput, DOMElements.departmentFilter, DOMElements.startDateInput, DOMElements.endDateInput].forEach(el => {
+        [DOMElements.searchInput, DOMElements.departmentFilter].forEach(el => {
             el.addEventListener(el.tagName === 'INPUT' ? 'input' : 'change', () => {
                 activeKpiFilterType = null; currentPage = 1;
                 DOMElements.monthFilterButtons.forEach(b => b.classList.remove('active'));
@@ -630,8 +612,10 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
         DOMElements.resetFiltersBtn.addEventListener('click', () => {
-            DOMElements.searchInput.value = ''; DOMElements.departmentFilter.value = '';
-            DOMElements.startDateInput.value = ''; DOMElements.endDateInput.value = '';
+            DOMElements.searchInput.value = ''; 
+            DOMElements.departmentFilter.value = '';
+            startDatePicker.clear();
+            endDatePicker.clear();
             DOMElements.monthFilterButtons.forEach(b => b.classList.remove('active'));
             activeKpiFilterType = null; currentPage = 1; renderUI();
         });
@@ -655,21 +639,38 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelector('.sidebar-nav').addEventListener('click', (e) => {
             e.preventDefault();
             const navItem = e.target.closest('.nav-item');
-            if (!navItem || navItem.classList.contains('active')) return;
+            if (!navItem) return;
+
+            if (navItem.id === 'admin-nav-item' && !isAdmin) {
+                showModal(DOMElements.passwordModal);
+                return;
+            }
+
+            if (navItem.classList.contains('active')) return;
+
             document.querySelectorAll('.sidebar-nav .nav-item').forEach(item => item.classList.remove('active'));
             navItem.classList.add('active');
+            
+            lastActiveView = document.querySelector('.view.active').id;
             document.querySelectorAll('.view').forEach(view => view.classList.remove('active'));
             document.getElementById(navItem.dataset.view).classList.add('active');
             renderUI();
         });
 
         // Modals & Admin
-        DOMElements.adminActionBtn.addEventListener('click', handleAdminClick);
         DOMElements.passwordForm.addEventListener('submit', handlePasswordSubmit);
-        document.querySelectorAll('.modal .close-button').forEach(btn => btn.addEventListener('click', (e) => hideModal(btn.closest('.modal'), e)));
-        window.addEventListener('click', (e) => { if (e.target.classList.contains('modal')) hideModal(e.target, e); });
+        document.querySelectorAll('.modal .close-button').forEach(btn => btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            hideModal(btn.closest('.modal'));
+        }));
+        window.addEventListener('click', (e) => { 
+            if (e.target.classList.contains('modal')) {
+                e.stopPropagation();
+                hideModal(e.target);
+            }
+        });
         document.getElementById('admin-add-new-btn').onclick = openFormForAdd;
-        document.getElementById('admin-search-input').oninput = (e) => populateAdminList(e.target.value);
+        DOMElements.adminSearchInput.oninput = (e) => populateAdminTable(e.target.value);
         DOMElements.reportForm.addEventListener('submit', handleFormSubmit);
         document.getElementById('report-recurrence-type').onchange = updateRecurrenceUI;
         document.getElementById('confirm-cancel-btn').onclick = (e) => hideModal(DOMElements.confirmModal, e);
@@ -682,6 +683,43 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Init ---
     setupEventListeners();
     initializeFirebaseListener();
+    
+    const flatpickrConfig = {
+        locale: "ar",
+        dateFormat: "Y-m-d",
+    };
+    
+    flatpickr("#report-single-dueDate", flatpickrConfig);
+    flatpickr("#report-startDate", flatpickrConfig);
+    flatpickr("#report-endDate", flatpickrConfig);
+
+    const sidebarFlatpickrConfig = {
+        ...flatpickrConfig,
+        onClose: function(selectedDates, dateStr, instance) {
+            activeKpiFilterType = null;
+            currentPage = 1;
+            document.querySelectorAll('.month-filter-btn').forEach(b => b.classList.remove('active'));
+            renderUI();
+        }
+    };
+
+    startDatePicker = flatpickr("#start-date", {
+        ...sidebarFlatpickrConfig,
+        onChange: function(selectedDates, dateStr, instance) {
+            if (endDatePicker) {
+                endDatePicker.set('minDate', selectedDates[0]);
+            }
+        },
+    });
+
+    endDatePicker = flatpickr("#end-date", {
+        ...sidebarFlatpickrConfig,
+        onChange: function(selectedDates, dateStr, instance) {
+            if (startDatePicker) {
+                startDatePicker.set('maxDate', selectedDates[0]);
+            }
+        },
+    });
     
     // --- Global Functions ---
     function renderAnalyticsCharts(data) {
@@ -745,14 +783,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }));
 
         if (calendarInstance) {
-            calendarInstance.destroy(); // Destroy and recreate to solve toolbar duplication
+            calendarInstance.destroy();
         }
         
         calendarInstance = new FullCalendar.Calendar(DOMElements.calendarEl, {
             locale: 'ar',
             headerToolbar: { right: 'prev,next today', center: 'title', left: '' },
             initialView: 'dayGridMonth',
-            height: 'auto', // Show all events without scrollbar
+            height: 'auto',
             events: events,
             eventClick: function(info) {
                 window.sendEmailById(info.event.extendedProps.reportId);
