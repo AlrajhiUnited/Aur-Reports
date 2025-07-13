@@ -554,7 +554,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // FIX: This function now correctly triggers a UI update
     const handleMonthFilterClick = (btn) => {
         DOMElements.monthFilterButtons.forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
@@ -570,10 +569,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const firstDay = new Date(year, month, 1);
         const lastDay = new Date(year, month + 1, 0);
         
+        // FIX: Clear constraints before setting new dates
+        startDatePicker.set('maxDate', null);
+        endDatePicker.set('minDate', null);
+        
         startDatePicker.setDate(firstDay, true);
         endDatePicker.setDate(lastDay, true);
 
-        // Manually trigger the UI update
         renderUI();
     };
     
