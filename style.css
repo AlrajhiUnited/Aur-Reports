@@ -448,31 +448,31 @@ html[dir=rtl] .notifications-dropdown { left: 0; right: auto; }
 .numInputWrapper span.arrowDown:after {
     border-top-color: var(--accent-gold);
 }
-/* FIX: Use CSS Grid for robust alignment */
-.flatpickr-rContainer {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-}
+/* FIX: Use Flexbox for robust alignment */
 .flatpickr-weekdays {
-    display: contents; /* Makes this container "disappear" so its children become direct grid items */
+    display: flex;
+    text-align: center;
 }
 .flatpickr-weekday {
+    flex: 1;
     color: var(--accent-gold-muted);
     font-size: 0.75rem;
     font-weight: 600;
-    text-align: center;
     line-height: 28px;
     height: 28px;
 }
 .dayContainer {
-    display: contents; /* Makes this container "disappear" so its children become direct grid items */
+    display: flex;
+    flex-wrap: wrap;
 }
 .flatpickr-day {
+    flex-basis: 14.28%; /* 100% / 7 */
+    max-width: 14.28%; /* Ensure no more than 7 per line */
     border-radius: var(--border-radius);
     font-size: 0.8rem;
     height: 32px;
     line-height: 32px;
-    margin: 1px;
+    margin: 1px 0;
     text-align: center;
     border: 1px solid transparent;
 }
