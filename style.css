@@ -415,7 +415,6 @@ html[dir=rtl] .notifications-dropdown { left: 0; right: auto; }
 .flatpickr-months .flatpickr-prev-month:hover svg, .flatpickr-months .flatpickr-next-month:hover svg {
     fill: var(--accent-gold-muted);
 }
-/* FIX: Unify month and year font size */
 .flatpickr-monthDropdown-months, .flatpickr-current-month .numInput {
     font-family: var(--font-family-base) !important;
     font-size: 0.9rem !important;
@@ -454,12 +453,19 @@ html[dir=rtl] .notifications-dropdown { left: 0; right: auto; }
     font-size: 0.75rem;
     font-weight: 600;
 }
+/* FIX: Use Flexbox for a robust day grid */
+.dayContainer {
+    display: flex;
+    flex-wrap: wrap;
+}
 .flatpickr-day {
+    flex: 0 0 14.28%; /* 100% / 7 days */
+    max-width: 14.28%; /* Ensure it doesn't exceed */
     border-radius: var(--border-radius);
     font-size: 0.8rem;
     height: 32px;
     line-height: 32px;
-    max-width: 32px;
+    margin: 0; /* Reset margin */
 }
 .flatpickr-day.today {
     border-color: var(--accent-gold);
