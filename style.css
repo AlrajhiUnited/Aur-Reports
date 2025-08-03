@@ -449,27 +449,32 @@ html[dir=rtl] .notifications-dropdown { left: 0; right: auto; }
     border-top-color: var(--accent-gold);
 }
 /* FIX: Use CSS Grid for robust alignment */
-.flatpickr-weekdays {
+.flatpickr-rContainer {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
-    text-align: center;
+}
+.flatpickr-weekdays {
+    display: contents; /* Makes this container "disappear" so its children become direct grid items */
 }
 .flatpickr-weekday {
     color: var(--accent-gold-muted);
     font-size: 0.75rem;
     font-weight: 600;
+    text-align: center;
+    line-height: 28px;
+    height: 28px;
 }
 .dayContainer {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
+    display: contents; /* Makes this container "disappear" so its children become direct grid items */
 }
 .flatpickr-day {
     border-radius: var(--border-radius);
     font-size: 0.8rem;
     height: 32px;
     line-height: 32px;
-    margin: 0;
+    margin: 1px;
     text-align: center;
+    border: 1px solid transparent;
 }
 .flatpickr-day.today {
     border-color: var(--accent-gold);
