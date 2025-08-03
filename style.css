@@ -448,13 +448,13 @@ html[dir=rtl] .notifications-dropdown { left: 0; right: auto; }
 .numInputWrapper span.arrowDown:after {
     border-top-color: var(--accent-gold);
 }
-/* FIX: Use Flexbox for robust alignment */
+/* FIX: Final robust grid solution */
 .flatpickr-weekdays {
     display: flex;
-    text-align: center;
 }
 .flatpickr-weekday {
-    flex: 1;
+    flex: 1 0 14.28%; /* Distribute space evenly */
+    text-align: center;
     color: var(--accent-gold-muted);
     font-size: 0.75rem;
     font-weight: 600;
@@ -466,8 +466,8 @@ html[dir=rtl] .notifications-dropdown { left: 0; right: auto; }
     flex-wrap: wrap;
 }
 .flatpickr-day {
-    flex-basis: 14.28%; /* 100% / 7 */
-    max-width: 14.28%; /* Ensure no more than 7 per line */
+    flex-basis: 14.28%;
+    max-width: 14.28%;
     border-radius: var(--border-radius);
     font-size: 0.8rem;
     height: 32px;
@@ -475,6 +475,7 @@ html[dir=rtl] .notifications-dropdown { left: 0; right: auto; }
     margin: 1px 0;
     text-align: center;
     border: 1px solid transparent;
+    box-sizing: border-box; /* Crucial for correct width calculation */
 }
 .flatpickr-day.today {
     border-color: var(--accent-gold);
