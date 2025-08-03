@@ -448,24 +448,30 @@ html[dir=rtl] .notifications-dropdown { left: 0; right: auto; }
 .numInputWrapper span.arrowDown:after {
     border-top-color: var(--accent-gold);
 }
+/* FIX: Use Flexbox for weekday alignment */
+.flatpickr-weekdays {
+    display: flex;
+}
 .flatpickr-weekday {
+    flex: 1 0 0; /* Distribute space evenly */
+    text-align: center;
     color: var(--accent-gold-muted);
     font-size: 0.75rem;
     font-weight: 600;
 }
-/* FIX: Use Flexbox for a robust day grid */
 .dayContainer {
     display: flex;
     flex-wrap: wrap;
 }
 .flatpickr-day {
-    flex: 0 0 14.28%; /* 100% / 7 days */
-    max-width: 14.28%; /* Ensure it doesn't exceed */
+    flex: 0 0 14.28%;
+    max-width: 14.28%;
     border-radius: var(--border-radius);
     font-size: 0.8rem;
     height: 32px;
     line-height: 32px;
-    margin: 0; /* Reset margin */
+    margin: 0;
+    text-align: center; /* Center the number */
 }
 .flatpickr-day.today {
     border-color: var(--accent-gold);
