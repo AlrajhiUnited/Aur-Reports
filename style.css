@@ -466,8 +466,8 @@ html[dir=rtl] .notifications-dropdown { left: 0; right: auto; }
     flex-wrap: wrap;
 }
 .flatpickr-day {
-    flex-basis: 14.28%;
-    max-width: 14.28%;
+    flex-basis: calc(100% / 7);
+    max-width: calc(100% / 7);
     border-radius: var(--border-radius);
     font-size: 0.8rem;
     height: 32px;
