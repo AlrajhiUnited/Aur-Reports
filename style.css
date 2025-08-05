@@ -384,7 +384,7 @@ html[dir=rtl] .notifications-dropdown { left: 0; right: auto; }
 .admin-controls input { flex-grow: 1; border-radius: 20px !important; font-size: 0.9rem; }
 .admin-controls .action-button-primary { padding: 8px 18px; font-size: 0.9rem; font-weight: 700; }
 
-/* --- Flatpickr Custom Styles (Final) --- */
+/* --- Flatpickr Custom Styles --- */
 .flatpickr-calendar {
     font-family: var(--font-family-base) !important;
     font-size: 0.85rem;
@@ -392,7 +392,7 @@ html[dir=rtl] .notifications-dropdown { left: 0; right: auto; }
     border: 1px solid var(--border-color-light);
     box-shadow: 0 3px 10px rgba(0,0,0,.1);
     border-radius: var(--border-radius);
-    width: 280px;
+    width: 320px; /* FINAL WIDTH */
     padding: 5px;
 }
 .flatpickr-months {
@@ -448,34 +448,17 @@ html[dir=rtl] .notifications-dropdown { left: 0; right: auto; }
 .numInputWrapper span.arrowDown:after {
     border-top-color: var(--accent-gold);
 }
-/* FIX: Final robust grid solution */
-.flatpickr-weekdays {
-    display: flex;
-}
 .flatpickr-weekday {
-    flex: 1 0 14.28%; /* Distribute space evenly */
-    text-align: center;
     color: var(--accent-gold-muted);
     font-size: 0.75rem;
     font-weight: 600;
-    line-height: 28px;
-    height: 28px;
-}
-.dayContainer {
-    display: flex;
-    flex-wrap: wrap;
 }
 .flatpickr-day {
-    flex-basis: calc(100% / 7);
-    max-width: calc(100% / 7);
     border-radius: var(--border-radius);
     font-size: 0.8rem;
     height: 32px;
     line-height: 32px;
-    margin: 1px 0;
-    text-align: center;
-    border: 1px solid transparent;
-    box-sizing: border-box; /* Crucial for correct width calculation */
+    max-width: 32px;
 }
 .flatpickr-day.today {
     border-color: var(--accent-gold);
@@ -502,4 +485,26 @@ html[dir=rtl] .notifications-dropdown { left: 0; right: auto; }
     color: rgba(108, 117, 125, 0.5);
     background: transparent;
     border-color: transparent;
+}
+
+/* --- FINAL, GUARANTEED FIX for Flatpickr RTL --- */
+.flatpickr-calendar {
+    direction: ltr !important;
+}
+.flatpickr-months .flatpickr-month,
+.flatpickr-monthDropdown-months,
+.flatpickr-weekday {
+    direction: rtl !important;
+    font-family: var(--font-family-base) !important;
+}
+.dayContainer, .flatpickr-weekdays {
+    display: flex !important;
+    width: 100% !important;
+}
+.flatpickr-weekday, .flatpickr-day {
+    flex-basis: 14.2% !important; /* Distribute space for 7 items */
+    width: 14.2% !important;
+    max-width: 14.2% !important;
+    text-align: center !important;
+    margin: 0 !important;
 }
